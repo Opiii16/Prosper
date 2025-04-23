@@ -1,0 +1,151 @@
+/* Reuse styles from Signin.css and add these additional styles */
+
+/* Name inputs container */
+.name-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+/* Password criteria styles */
+.password-criteria {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 13px;
+}
+
+.password-criteria p {
+    margin: 0;
+    color: #7f8c8d;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.password-criteria p:before {
+    content: "✓";
+    display: inline-block;
+}
+
+.password-criteria .valid {
+    color: #27ae60;
+}
+
+.password-criteria .invalid {
+    color: #e74c3c;
+}
+
+/* Checkbox styles */
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    margin: 15px 0;
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #7f8c8d;
+    cursor: pointer;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #3498db;
+}
+
+/* Login link */
+.login-link {
+    margin-top: 20px;
+    font-size: 14px;
+    color: #7f8c8d;
+}
+
+.login-link a {
+    color: #3498db;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.login-link a:hover {
+    text-decoration: underline;
+}
+.signup-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #f4f4f4;
+}
+
+.signup-form-container {
+  background: #ffffff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+.signup-form h2 {
+  margin-bottom: 1.5rem;
+  text-align: center;
+  font-weight: bold;
+}
+
+.signup-form input {
+  width: 100%;
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+.signup-form button {
+  width: 100%;
+  padding: 0.75rem;
+  margin-top: 1rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.signup-form button:hover {
+  background-color: #0056b3;
+}
+
+.text-info {
+  color: #17a2b8;
+  text-align: center;
+}
+
+.text-success {
+  color: #28a745;
+  text-align: center;
+}
+
+.text-danger {
+  color: #dc3545;
+  text-align: center;
+}
+
+.signup-link,
+.forgot-links,
+.tos-text,
+.legal-text {
+  text-align: center;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}
+
+.legal-link {
+  color: #007bff;
+  text-decoration: underline;
+}

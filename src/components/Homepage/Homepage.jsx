@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import Navbar from './Navbar';
+import Navbar from '../Navbar/Navbar.jsx';
 import './Homepage.css';
 
 const carouselImages = [
