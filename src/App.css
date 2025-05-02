@@ -36,3 +36,288 @@
     transform: rotate(360deg);
   }
 }
+/* Reset & Base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #f9f9f9;
+  color: #333;
+  line-height: 1.6;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+  font: inherit;
+}
+
+/* Navbar */
+.app-navbar {
+  background-color: #111;
+  padding: 0.8rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  position: relative;
+  color: #fff;
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navbar-logo-icon {
+  height: 40px;
+  margin-right: 10px;
+}
+
+.navbar-logo-text {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.navbar-menu {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  transition: max-height 0.3s ease-in-out;
+  overflow: hidden;
+}
+
+.navbar-menu.open {
+  max-height: 500px;
+}
+
+/* Nav Items */
+.navbar-nav {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0;
+}
+
+.nav-item {
+  position: relative;
+}
+
+.nav-link {
+  color: #fff;
+  font-weight: 500;
+  padding: 0.5rem;
+}
+
+.nav-link:hover {
+  color: #00c7a3;
+}
+
+/* Dropdowns */
+.nav-dropdown .dropdown-arrow {
+  margin-left: 4px;
+  font-size: 0.8rem;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: #222;
+  padding: 0.5rem;
+  border-radius: 6px;
+  min-width: 150px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  z-index: 999;
+}
+
+.dropdown-list {
+  list-style: none;
+}
+
+.dropdown-item {
+  padding: 0.5rem;
+  color: #eee;
+  width: 100%;
+  text-align: left;
+}
+
+.dropdown-item:hover {
+  background-color: #333;
+  color: #00c7a3;
+}
+
+/* Search */
+.search-form {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 20px;
+  padding: 4px 10px;
+}
+
+.search-input {
+  border: none;
+  padding: 6px 10px;
+  outline: none;
+  border-radius: 20px;
+}
+
+.search-button {
+  background: none;
+  border: none;
+  margin-left: 6px;
+}
+
+/* Cart */
+.cart-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  color: #fff;
+}
+
+.cart-badge {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  background: red;
+  color: white;
+  font-size: 0.75rem;
+  border-radius: 50%;
+  padding: 2px 6px;
+}
+
+/* Auth Buttons */
+.auth-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: 1rem;
+}
+
+.auth-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.auth-btn.signup-btn {
+  background-color: #00c7a3;
+  color: #fff;
+}
+
+.auth-btn.signup-btn:hover {
+  background-color: #00a388;
+}
+
+.auth-btn.btn-outline-light {
+  border: 1px solid #fff;
+  color: #fff;
+}
+
+.auth-btn.btn-outline-light:hover {
+  background-color: #fff;
+  color: #000;
+}
+
+/* Mobile Styles */
+.mobile-menu-button {
+  background: none;
+  border: none;
+  display: none;
+}
+
+.menu-icon {
+  display: inline-block;
+  width: 24px;
+  height: 2px;
+  background: white;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.menu-icon::before,
+.menu-icon::after {
+  content: '';
+  width: 24px;
+  height: 2px;
+  background: white;
+  position: absolute;
+  transition: all 0.3s ease;
+}
+
+.menu-icon::before {
+  top: -8px;
+}
+
+.menu-icon::after {
+  top: 8px;
+}
+
+.menu-icon.open {
+  background: transparent;
+}
+
+.menu-icon.open::before {
+  transform: rotate(45deg);
+  top: 0;
+}
+
+.menu-icon.open::after {
+  transform: rotate(-45deg);
+  top: 0;
+}
+
+@media (max-width: 768px) {
+  .navbar-menu {
+    flex-direction: column;
+    max-height: 0;
+  }
+
+  .navbar-menu.open {
+    display: flex;
+  }
+
+  .navbar-nav {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .mobile-menu-button {
+    display: block;
+  }
+
+  .navbar-right-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    width: 100%;
+  }
+
+  .auth-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .auth-btn {
+    width: 100%;
+    text-align: center;
+  }
+}

@@ -64,28 +64,29 @@ const productsWithSizes = addSizesToProducts(products);
 
 const Homepage = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [cartNotification, setCartNotification] = useState(null);
+
+  const nextSlide = useCallback(() => {
+    setCurrentSlide((prevSlide) => (prevSlide + 1) % carouselImages.length);
+  }, []);
+
+  const prevSlide = useCallback(() => {
+    setCurrentSlide((prevSlide) => (prevSlide === 0 ? carouselImages.length - 1 : prevSlide - 1));
+  }, []);
+
+  useEffect(() => {
+    if (isPaused) return;
+
+    const interval = setInterval(nextSlide, 5000);
+    return () => clearInterval(interval);
+  }, [nextSlide, isPaused]);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 1000);
     return () => clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      nextSlide();
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev === carouselImages.length - 1 ? 0 : prev + 1));
-  };
-
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev === 0 ? carouselImages.length - 1 : prev - 1));
-  };
 
   const addToCart = (product) => {
     setCartNotification(`${product.name} added to cart`);
@@ -140,7 +141,6 @@ const Homepage = () => {
 
   return (
     <div className="homepage">
-      <Navbar />
 
       {cartNotification && (
         <div className="cart-notification">
@@ -152,7 +152,13 @@ const Homepage = () => {
       )}
 
       <section className="carousel-section">
-        <div className="carousel" role="region" aria-label="Featured products carousel">
+        <div 
+          className="carousel" 
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+          role="region" 
+          aria-label="Featured products carousel"
+        >
           <button 
             onClick={prevSlide} 
             className="carousel-btn prev"
@@ -160,23 +166,34 @@ const Homepage = () => {
           >
             ‹
           </button>
+
           <div className="carousel-slide">
-            <img 
-              src={carouselImages[currentSlide].src} 
-              alt={carouselImages[currentSlide].alt}
-              loading="lazy"
-              onError={(e) => {
-                e.target.src = '/assets/fallback-banner.jpg';
-              }}
-            />
-            <div className="carousel-text">
-              <h2>{carouselImages[currentSlide].title}</h2>
-              <p>{carouselImages[currentSlide].subtitle}</p>
-              <Link to="/shop" className="carousel-cta">
-                {carouselImages[currentSlide].cta}
-              </Link>
-            </div>
+            {carouselImages.map((slide, index) => (
+              <div
+                key={index}
+                className={`carousel-item ${index === currentSlide ? 'active' : ''}`}
+              >
+                <img 
+                  src={slide.src} 
+                  alt={slide.alt}
+                  loading="lazy"
+                  onError={(e) => {
+                    e.target.src = '/assets/fallback-banner.jpg';
+                  }}
+                />
+                {index === currentSlide && (
+                  <div className="carousel-text">
+                    <h2>{slide.title}</h2>
+                    <p>{slide.subtitle}</p>
+                    <Link to="/shop" className="carousel-cta">
+                      {slide.cta}
+                    </Link>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
+
           <button 
             onClick={nextSlide} 
             className="carousel-btn next"
@@ -184,6 +201,7 @@ const Homepage = () => {
           >
             ›
           </button>
+
           <div className="carousel-indicators">
             {carouselImages.map((_, index) => (
               <button
