@@ -1,0 +1,94 @@
+.about-us-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    font-family: 'Arial', sans-serif;
+    color: #333;
+}
+
+.prosper-logo {
+    display: block;
+    margin: 0 auto 30px;
+    max-width: 200px;
+    height: auto;
+}
+
+.about-us-title {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 30px;
+    font-size: 2.5rem;
+}
+
+.about-us-description p {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    margin-bottom: 20px;
+    text-align: justify;
+}
+
+.mission-vision {
+    display: flex;
+    justify-content: space-between;
+    margin: 40px 0;
+    gap: 30px;
+}
+
+.mission, .vision {
+    flex: 1;
+    padding: 25px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.mission h3, .vision h3 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+}
+
+.core-values {
+    background-color: #f8f9fa;
+    padding: 30px;
+    border-radius: 8px;
+    margin-top: 40px;
+}
+
+.core-values h3 {
+    color: #2c3e50;
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+}
+
+.core-values ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.core-values li {
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    padding-left: 25px;
+    position: relative;
+}
+
+.core-values li:before {
+    content: "•";
+    color: #3498db;
+    font-size: 1.5rem;
+    position: absolute;
+    left: 0;
+    top: -3px;
+}
+
+@media (max-width: 768px) {
+    .mission-vision {
+        flex-direction: column;
+    }
+    
+    .about-us-title {
+        font-size: 2rem;
+    }
+}

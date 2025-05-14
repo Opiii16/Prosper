@@ -1,104 +1,89 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useCallback, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../Navbar/Navbar.jsx';
+import Carousel from '../Carousel/Carousel.jsx';
 import './Homepage.css';
 
-const carouselImages = [
-  {
-    src: '/assets/carousel/hoodie-banner.jpg',
-    alt: 'Prosper Hood Collection',
-    title: 'NEW ARRIVALS',
-    subtitle: 'Urban Hoods Collection',
-    cta: 'SHOP NOW'
-  },
-  {
-    src: '/assets/carousel/tshirt-banner.jpg',
-    alt: 'Prosper T-Shirts',
-    title: 'SUMMER SALE',
-    subtitle: '50% OFF SELECT T-SHIRTS',
-    cta: 'DISCOVER DEALS'
-  },
-  {
-    src: '/assets/carousel/cap-banner.jpg',
-    alt: 'Prosper Caps Collection',
-    title: 'STREET STYLE',
-    subtitle: 'Trendy Caps for Every Occasion',
-    cta: 'EXPLORE'
-  }
-];
-
-const products = {
-  hoods: [
-    { id: 1, name: 'Urban Hoodie', price: 2500, colors: ['black', 'gray', 'navy'], image: '/assets/products/hoodies/hoodie-1.jpg' },
-    { id: 2, name: 'Street Zip Hood', price: 2800, colors: ['red', 'black'], image: '/assets/products/hoodies/hoodie-2.jpg' },
-    { id: 3, name: 'Classic Pullover', price: 2200, colors: ['white', 'green'], image: '/assets/products/hoodies/hoodie-3.jpg' }
-  ],
-  tshirts: [
-    { id: 4, name: 'Graphic Tee', price: 1200, colors: ['white', 'black'], image: '/assets/products/tshirts/tshirt-1.jpg' },
-    { id: 5, name: 'Pocket Tee', price: 1500, colors: ['gray', 'blue'], image: '/assets/products/tshirts/tshirt-2.jpg' },
-    { id: 6, name: 'Oversized Tee', price: 1800, colors: ['black', 'white'], image: '/assets/products/tshirts/tshirt-3.jpg' }
-  ],
-  caps: [
-    { id: 7, name: 'Snapback Cap', price: 800, colors: ['black', 'red'], image: '/assets/products/caps/cap-1.jpg' },
-    { id: 8, name: 'Dad Hat', price: 700, colors: ['khaki', 'navy'], image: '/assets/products/caps/cap-2.jpg' },
-    { id: 9, name: 'Bucket Hat', price: 900, colors: ['black', 'camo'], image: '/assets/products/caps/cap-3.jpg' }
-  ],
-  croptops: [
-    { id: 10, name: 'Basic Crop', price: 600, colors: ['white', 'pink'], image: '/assets/products/croptops/crop-1.jpg' },
-    { id: 11, name: 'Ribbed Crop', price: 800, colors: ['black', 'beige'], image: '/assets/products/croptops/crop-2.jpg' },
-    { id: 12, name: 'Sleeveless Crop', price: 700, colors: ['gray', 'green'], image: '/assets/products/croptops/crop-3.jpg' }
-  ]
-};
-
-const addSizesToProducts = (products) => {
-  return Object.entries(products).reduce((acc, [category, items]) => {
-    acc[category] = items.map(item => ({
-      ...item,
-      sizes: ['S', 'M', 'L', 'XL', 'XXL']
-    }));
-    return acc;
-  }, {});
-};
-
-const productsWithSizes = addSizesToProducts(products);
-
 const Homepage = () => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [cartNotification, setCartNotification] = useState(null);
+  const navigate = useNavigate();
 
-  const nextSlide = useCallback(() => {
-    setCurrentSlide((prevSlide) => (prevSlide + 1) % carouselImages.length);
+  const baseProducts = useMemo(() => ({
+    hoods: [
+      { id: 1, name: 'Urban Hoodie', price: 2500, colors: ['black', 'gray', 'navy'], image: '/assets/images/hoodie-1.png' },
+      { id: 2, name: 'Street Zip Hood', price: 2800, colors: ['red', 'black'], image: '/assets/images/hoodie-2.png' },
+      { id: 3, name: 'Classic Pullover', price: 2200, colors: ['white', 'green'], image: '/assets/images/hoodie-3.png' }
+    ],
+    tshirts: [
+      { id: 4, name: 'Graphic Tee', price: 1200, colors: ['white', 'black'], image: '/assets/images/black jeezy.png' },
+      { id: 5, name: 'Pocket Tee', price: 1500, colors: ['gray', 'blue'], image: '/assets/images/green jeezy.png' },
+      { id: 6, name: 'Oversized Tee', price: 1800, colors: ['black', 'white'], image: '/assets/images/red jeezy.jfif' }
+    ],
+    caps: [
+      { id: 7, name: 'Snapback Cap', price: 800, colors: ['black', 'red'], image: '/assets/images/cap-1.png' },
+      { id: 8, name: 'Dad Hat', price: 700, colors: ['khaki', 'navy'], image: '/assets/images/cap-2.png' },
+      { id: 9, name: 'Bucket Hat', price: 900, colors: ['black', 'camo'], image: '/assets/images/cap-3.png' }
+    ],
+    croptops: [
+      { id: 10, name: 'Basic Crop', price: 600, colors: ['white', 'pink'], image: '/assets/images/hoodie-4.png' },
+      { id: 11, name: 'Ribbed Crop', price: 800, colors: ['black', 'beige'], image: '/assets/images/white jeezy.jfif' },
+      { id: 12, name: 'Sleeveless Crop', price: 700, colors: ['gray', 'green'], image: '/assets/images/cap-4.png' }
+    ]
+  }), []);
+
+  const addSizesToProducts = useCallback((products) => {
+    return Object.entries(products).reduce((acc, [category, items]) => {
+      acc[category] = items.map(item => ({
+        ...item,
+        sizes: ['S', 'M', 'L', 'XL', 'XXL']
+      }));
+      return acc;
+    }, {});
   }, []);
 
-  const prevSlide = useCallback(() => {
-    setCurrentSlide((prevSlide) => (prevSlide === 0 ? carouselImages.length - 1 : prevSlide - 1));
-  }, []);
+  const productsWithSizes = useMemo(() => addSizesToProducts(baseProducts), [baseProducts, addSizesToProducts]);
 
-  useEffect(() => {
-    if (isPaused) return;
+  const categorySubtitles = useMemo(() => ({
+    hoods: 'Premium quality from 2200 KSH',
+    tshirts: 'Stylish designs from 1200 KSH',
+    caps: 'Trendy styles from 700 KSH',
+    croptops: 'Fashionable from 600 KSH'
+  }), []);
 
-    const interval = setInterval(nextSlide, 5000);
-    return () => clearInterval(interval);
-  }, [nextSlide, isPaused]);
+  const addToCart = useCallback((product) => {
+    const cartItems = JSON.parse(localStorage.getItem('prosperCart')) || [];
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1000);
-    return () => clearTimeout(timer);
-  }, []);
+    const existingItemIndex = cartItems.findIndex(item => 
+      item.id === product.id && 
+      JSON.stringify(item.colors) === JSON.stringify(product.colors)
+    );
 
-  const addToCart = (product) => {
+    let updatedCart;
+    if (existingItemIndex >= 0) {
+      updatedCart = [...cartItems];
+      updatedCart[existingItemIndex].quantity += 1;
+    } else {
+      const cartProduct = {
+        ...product,
+        quantity: 1,
+        selectedSize: product.sizes?.[0] || 'M'
+      };
+      updatedCart = [...cartItems, cartProduct];
+    }
+
+    localStorage.setItem('prosperCart', JSON.stringify(updatedCart));
     setCartNotification(`${product.name} added to cart`);
     setTimeout(() => setCartNotification(null), 3000);
-    console.log('Added to cart:', product);
-  };
+
+    // Navigate to cart
+    navigate('/cart', { state: { cartItems: updatedCart } });
+  }, [navigate]);
 
   const renderProductCard = useCallback((product) => (
     <div key={product.id} className="product-card">
       <div className="product-image">
-        <img 
-          src={product.image} 
+        <img
+          src={product.image}
           alt={product.name}
           loading="lazy"
           onError={(e) => {
@@ -111,8 +96,8 @@ const Homepage = () => {
         <h3 className="product-name">{product.name}</h3>
         <div className="product-colors">
           {product.colors.map((color) => (
-            <span 
-              key={color} 
+            <span
+              key={color}
               className={`color-dot ${color}`}
               title={color}
             ></span>
@@ -120,8 +105,8 @@ const Homepage = () => {
         </div>
         <div className="product-sizes">
           {product.sizes.map((size) => (
-            <span 
-              key={size} 
+            <span
+              key={size}
               className="size-option"
               title={size}
             >{size}</span>
@@ -137,10 +122,12 @@ const Homepage = () => {
         </button>
       </div>
     </div>
-  ), []);
+  ), [addToCart]);
 
   return (
     <div className="homepage">
+      <Navbar />
+      <Carousel />
 
       {cartNotification && (
         <div className="cart-notification">
@@ -151,95 +138,66 @@ const Homepage = () => {
         </div>
       )}
 
-      <section className="carousel-section">
-        <div 
-          className="carousel" 
-          onMouseEnter={() => setIsPaused(true)}
-          onMouseLeave={() => setIsPaused(false)}
-          role="region" 
-          aria-label="Featured products carousel"
-        >
-          <button 
-            onClick={prevSlide} 
-            className="carousel-btn prev"
-            aria-label="Previous slide"
-          >
-            ‹
-          </button>
-
-          <div className="carousel-slide">
-            {carouselImages.map((slide, index) => (
-              <div
-                key={index}
-                className={`carousel-item ${index === currentSlide ? 'active' : ''}`}
-              >
-                <img 
-                  src={slide.src} 
-                  alt={slide.alt}
-                  loading="lazy"
-                  onError={(e) => {
-                    e.target.src = '/assets/fallback-banner.jpg';
-                  }}
-                />
-                {index === currentSlide && (
-                  <div className="carousel-text">
-                    <h2>{slide.title}</h2>
-                    <p>{slide.subtitle}</p>
-                    <Link to="/shop" className="carousel-cta">
-                      {slide.cta}
-                    </Link>
-                  </div>
-                )}
-              </div>
-            ))}
+      {Object.entries(productsWithSizes).map(([category, items]) => (
+        <section key={category} className="product-category">
+          <h2 className="section-title">
+            <Link to={`/shop/${category}`}>
+              {category.toUpperCase()} COLLECTION
+            </Link>
+          </h2>
+          <p className="section-subtitle">
+            {categorySubtitles[category]}
+          </p>
+          <div className="product-grid">
+            {items.map(renderProductCard)}
           </div>
+        </section>
+      ))}
 
-          <button 
-            onClick={nextSlide} 
-            className="carousel-btn next"
-            aria-label="Next slide"
-          >
-            ›
-          </button>
-
-          <div className="carousel-indicators">
-            {carouselImages.map((_, index) => (
-              <button
-                key={index}
-                className={`indicator ${index === currentSlide ? 'active' : ''}`}
-                onClick={() => setCurrentSlide(index)}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {isLoading ? (
-        <div className="loading-spinner">
-          <div className="spinner"></div>
-          <p>Loading products...</p>
-        </div>
-      ) : (
-        Object.entries(productsWithSizes).map(([category, items]) => (
-          <section key={category} className="product-category">
-            <h2 className="section-title">
-              <Link to={`/shop/${category}`}>
-                {category.toUpperCase()} COLLECTION
-              </Link>
-            </h2>
-            <p className="section-subtitle">
-              {category === 'hoods' && 'Premium quality from 2000 KSH'}
-              {category === 'tshirts' && 'Stylish designs from 3000 KSH'}
-              {category === 'caps' && 'Trendy styles from 700 KSH'}
-              {category === 'croptops' && 'Fashionable from 500 KSH'}
-            </p>
-            <div className="product-grid">
-              {items.map(renderProductCard)}
+      <footer className="prosper-footer bg-secondary text-dark pt-4 pb-2">
+        <div className="container">
+          <div className="row text-center text-md-start">
+            <div className="col-md-4 mb-3">
+              <img src="/assets/images/prosper-logo.png" alt="Prosper Logo" className="img-fluid mb-2" style={{ maxWidth: '100px' }} />
+              <p className="mb-1 fw-bold">Prosper Designs</p>
+              <p style={{ fontSize: '0.85rem' }}>
+                Premium fashion for the bold and stylish. Elevate your wardrobe with our latest collections.
+              </p>
             </div>
-          </section>
-        ))
-      )}
+
+            <div className="col-md-4 mb-3">
+              <h6 className="fw-bold mb-2">Get in Touch</h6>
+              <form>
+                <input type="email" className="form-control form-control-sm mb-2" placeholder="Your email" />
+                <textarea className="form-control form-control-sm mb-2" rows="2" placeholder="Your message"></textarea>
+                <button type="submit" className="btn btn-outline-light btn-sm w-100">Submit</button>
+              </form>
+            </div>
+
+            <div className="col-md-4 mb-3">
+              <h6 className="fw-bold mb-2">Contact Us</h6>
+              <p style={{ fontSize: '0.85rem', marginBottom: '0.3rem' }}>
+                <strong>Phone:</strong> +254745876122 / +254711111111
+              </p>
+              <p style={{ fontSize: '0.85rem', marginBottom: '0.3rem' }}>
+                <strong>Email:</strong> prosper@prosperclothing.com
+              </p>
+              <div className="d-flex justify-content-center justify-content-md-start gap-2 mt-2">
+                <img src="/assets/images/in.png" alt="LinkedIn" height="24" />
+                <span className="ms-2">IG@Prosper</span>
+                <img src="/assets/images/x.png" alt="Twitter" height="24" />
+                <span className="ms-2">X@ProsperDesigns</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center mt-3 border-top pt-2" style={{ fontSize: '0.75rem' }}>
+            <img src="/assets/images/prosper-logo.png" alt="Logo" height="24" className="me-2" />
+            Developed by Prosper Clothing Brand  © {new Date().getFullYear()} All rights reserved
+            <img src="/assets/images/prosper-logo.png" alt="Logo" height="24" className="ms-2" />
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
