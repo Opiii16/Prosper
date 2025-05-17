@@ -56,8 +56,10 @@ const MakePayment = () => {
         }))
       };
 
-      // DEVELOPMENT: Mock payment flow
-      if (process.env.NODE_ENV === 'development') {
+      // Always use mock in development or if API URL is not set
+      const shouldUseMock = process.env.NODE_ENV === 'development' || !process.env.REACT_APP_MPESA_API_URL;
+
+      if (shouldUseMock) {
         console.log('[DEV] Mock payment data:', paymentData);
         await new Promise(resolve => setTimeout(resolve, 1500));
         
@@ -83,17 +85,12 @@ const MakePayment = () => {
       }
 
       // PRODUCTION: Real API call
-      const apiUrl = process.env.REACT_APP_MPESA_API_URL;
-      if (!apiUrl) {
-        throw new Error('Payment API endpoint is not configured');
-      }
-
       const response = await axios.post(
-        apiUrl,
+        process.env.REACT_APP_MPESA_API_URL,
         paymentData,
         {
           headers: {
-            'Authorization': `Bearer ${process.env.REACT_APP_MPESA_API_KEY || 'your-api-key'}`,
+            'Authorization': `Bearer ${process.env.REACT_APP_MPESA_API_KEY}`,
             'Content-Type': 'application/json'
           },
           timeout: 10000
@@ -130,15 +127,15 @@ const MakePayment = () => {
       }
     } catch (error) {
       console.error('Payment error:', error);
-      let errorMessage = 'An error occurred during payment processing';
+      let errorMessage = 'Payment processing failed';
       
-      if (error.message.includes('API endpoint')) {
-        errorMessage = 'Payment system is currently unavailable. Please try again later.';
+      if (error.code === 'ERR_NETWORK') {
+        errorMessage = 'Network error - could not connect to payment service';
       } else if (error.response) {
         errorMessage = error.response.data?.message || 
-                      `Server error (${error.response.status})`;
+                      `Payment error (${error.response.status})`;
       } else if (error.request) {
-        errorMessage = 'Network error - could not reach payment server';
+        errorMessage = 'No response from payment server';
       } else if (error.code === 'ECONNABORTED') {
         errorMessage = 'Request timeout - please check your connection';
       }
@@ -198,7 +195,8 @@ const MakePayment = () => {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               required
-              pattern="(07[0-9]{8}|254[0-9]{9}|7[0-9]{8})"
+              pattern="^(07\d{8}|254\d{9}|7\d{8})$"
+              title="Enter a valid M-Pesa number (0712345678 or 254712345678)"
               maxLength="12"
             />
             <small>Enter your Safaricom number (e.g., 0712345678 or 254712345678)</small>
