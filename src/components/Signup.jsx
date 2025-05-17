@@ -9,37 +9,75 @@ const Signup = () => {
     password: '',
     subscribe: true
   });
+  
+  const [loading, setLoading] = useState("");
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+  const [passwordCriteria, setPasswordCriteria] = useState({
+    length: false,
+    letter: false,
+    number: false,
+  });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prevData => ({
-      ...prevData,
+    setFormData(prev => ({
+      ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+
+    if (name === 'password') {
+      setPasswordCriteria({
+        length: value.length >= 8,
+        letter: /[a-zA-Z]/.test(value),
+        number: /[0-9]/.test(value),
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading("Please wait as we process your details");
+    setSuccess("");
+    setError("");
 
-    const data = new FormData();
-    data.append("username", formData.username);
-    data.append("phone", formData.phone);
-    data.append("email", formData.email);
-    data.append("password", formData.password);
-    data.append("subscribe", formData.subscribe);
-      
-   
     try {
-      const response = await axios.post(' "https://prosperv21.pythonanywhere.com/api/signup', data);
-      console.log("Signup successful:", response.data);
+      const data = new FormData();
+      data.append("username", formData.username);
+      data.append("phone", formData.phone);
+      data.append("email", formData.email);
+      data.append("password", formData.password);
+      data.append("subscribe", formData.subscribe);
+
+      const response = await axios.post(
+        "https://prosperv21.pythonanywhere.com/api/signup", 
+        data
+      );
+
+      setLoading("");
+      setSuccess(response.data.Success || "Signup successful!");
+      
+      // Reset form
+      setFormData({
+        username: '',
+        phone: '',
+        email: '',
+        password: '',
+        subscribe: true
+      });
     } catch (error) {
-      console.error("Signup failed:", error);
+      setLoading("");
+      setError(error.response?.data?.message || "Oops, something happened. Please try again.");
     }
   };
 
   return (
     <form onSubmit={handleSubmit} style={{ maxWidth: '600px', margin: '0 auto' }}>
       <h2>Sign Up</h2>
+
+      {loading && <p style={{ color: '#17a2b8', textAlign: 'center' }}>{loading}</p>}
+      {error && <p style={{ color: '#dc3545', textAlign: 'center' }}>{error}</p>}
+      {success && <p style={{ color: '#28a745', textAlign: 'center' }}>{success}</p>}
 
       <div style={{ display: 'flex', gap: '16px' }}>
         <div style={{ flex: 1 }}>
@@ -88,6 +126,17 @@ const Signup = () => {
           required
           style={inputStyle}
         />
+        <div style={{ marginTop: '8px', fontSize: '14px' }}>
+          <p style={{ color: passwordCriteria.length ? '#28a745' : '#6c757d', margin: '4px 0' }}>
+            ✓ Minimum 8 characters
+          </p>
+          <p style={{ color: passwordCriteria.letter ? '#28a745' : '#6c757d', margin: '4px 0' }}>
+            ✓ At least one letter
+          </p>
+          <p style={{ color: passwordCriteria.number ? '#28a745' : '#6c757d', margin: '4px 0' }}>
+            ✓ At least one number
+          </p>
+        </div>
       </div>
 
       <div style={{ marginBottom: '16px' }}>
@@ -102,7 +151,13 @@ const Signup = () => {
         </label>
       </div>
 
-      <button type="submit" style={buttonStyle}>Sign Up</button>
+      <button 
+        type="submit" 
+        disabled={loading}
+        style={buttonStyle}
+      >
+        {loading ? "Creating account..." : "Sign Up"}
+      </button>
     </form>
   );
 };
@@ -123,7 +178,8 @@ const buttonStyle = {
   color: '#fff',
   border: 'none',
   borderRadius: '4px',
-  cursor: 'pointer'
+  cursor: 'pointer',
+  width: '100%'
 };
 
 export default Signup;
