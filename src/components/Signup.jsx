@@ -2,291 +2,181 @@ import React, { useState } from 'react';
 import axios from 'axios';
 
 const Signup = () => {
-const \[formData, setFormData] = useState({
-userName: '',
-lastName: '',
-email: '',
-password: '',
-subscribe: true
-});
-const \[loading, setLoading] = useState("");
-const \[success, setSuccess] = useState("");
-const \[error, setError] = useState("");
-const \[passwordCriteria, setPasswordCriteria] = useState({
-length: false,
-letter: false,
-number: false,
-});
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    phone: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-```
-const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+  const handleChange = (e) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? checked : value
+      ...prev,
+      [name]: value
     }));
+  };
 
-    if (name === 'password') {
-        setPasswordCriteria({
-            length: value.length >= 8,
-            letter: /[a-zA-Z]/.test(value),
-            number: /[0-9]/.test(value),
-        });
-    }
-};
-
-const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading("Please wait as we process your details");
-    setSuccess("");
-    setError("");
+    setLoading(true);
+    setError('');
+    setSuccess('');
 
     try {
-        const data = new FormData();
-        data.append("firstname", formData.firstName);
-        data.append("lastname", formData.lastName);
-        data.append("email", formData.email);
-        data.append("password", formData.password);
+      const response = await axios.post('https://prosperv21.pythonanywhere.com/api/signup', {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone
+      });
 
-        const response = await axios.post(
-            "https://prosperv21.pythonanywhere.com/api/signup", 
-            data
-        );
-
-        setLoading("");
-        setSuccess(response.data.Success || "Signup successful!");
-        
-        // Reset form
-        setFormData({
-            firstName: '',
-            lastName: '',
-            email: '',
-            password: '',
-            subscribe: true
-        });
-    } catch (error) {
-        setLoading("");
-        setError(error.response?.data?.message || "Oops, something happened. Please try again.");
+      setSuccess('User created successfully!');
+      // Reset form
+      setFormData({
+        username: '',
+        email: '',
+        password: '',
+        phone: ''
+      });
+      
+      // You might want to save the token and redirect user
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        // Redirect logic here
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'An error occurred during signup');
+    } finally {
+      setLoading(false);
     }
-};
+  };
 
-return (
-    <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        backgroundColor: '#f5f5f5',
-        padding: '20px'
-    }}>
-        <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-            padding: '40px',
-            width: '100%',
-            maxWidth: '500px'
-        }}>
-            <h2 style={{
-                textAlign: 'center',
-                marginBottom: '8px',
-                color: '#333',
-                fontSize: '24px'
-            }}>Create Your Account</h2>
-            <p style={{
-                textAlign: 'center',
-                marginBottom: '24px',
-                color: '#666'
-            }}>Join us to get started</p>
-            
-            {loading && <p style={{
-                color: '#17a2b8',
-                textAlign: 'center',
-                margin: '16px 0'
-            }}>{loading}</p>}
-            {error && <p style={{
-                color: '#dc3545',
-                textAlign: 'center',
-                margin: '16px 0'
-            }}>{error}</p>}
-            {success && <p style={{
-                color: '#28a745',
-                textAlign: 'center',
-                margin: '16px 0'
-            }}>{success}</p>}
-
-            <form onSubmit={handleSubmit} style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '16px'
-            }}>
-                <div style={{
-                    display: 'flex',
-                    gap: '16px'
-                }}>
-                    <div style={{ flex: 1 }}>
-                        <input
-                            type="text"
-                            name="firstName"
-                            placeholder="First Name"
-                            value={formData.firstName}
-                            onChange={handleChange}
-                            required
-                            style={{
-                                padding: '12px',
-                                borderRadius: '4px',
-                                border: '1px solid #ddd',
-                                fontSize: '16px',
-                                width: '100%'
-                            }}
-                        />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                        <input
-                            type="text"
-                            name="lastName"
-                            placeholder="Last Name"
-                            value={formData.lastName}
-                            onChange={handleChange}
-                            required
-                            style={{
-                                padding: '12px',
-                                borderRadius: '4px',
-                                border: '1px solid #ddd',
-                                fontSize: '16px',
-                                width: '100%'
-                            }}
-                        />
-                    </div>
-                </div>
-
-                <div>
-                    <input
-                        type="email"
-                        name="email"
-                        placeholder="Email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        required
-                        style={{
-                            padding: '12px',
-                            borderRadius: '4px',
-                            border: '1px solid #ddd',
-                            fontSize: '16px',
-                            width: '100%'
-                        }}
-                    />
-                </div>
-
-                <div>
-                    <input
-                        type="password"
-                        name="password"
-                        placeholder="Password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        required
-                        style={{
-                            padding: '12px',
-                            borderRadius: '4px',
-                            border: '1px solid #ddd',
-                            fontSize: '16px',
-                            width: '100%'
-                        }}
-                    />
-                    <div style={{
-                        marginTop: '8px',
-                        fontSize: '14px'
-                    }}>
-                        <p style={{
-                            color: passwordCriteria.length ? '#28a745' : '#6c757d',
-                            margin: '4px 0'
-                        }}>
-                            ✓ Minimum 8 characters
-                        </p>
-                        <p style={{
-                            color: passwordCriteria.letter ? '#28a745' : '#6c757d',
-                            margin: '4px 0'
-                        }}>
-                            ✓ At least one letter
-                        </p>
-                        <p style={{
-                            color: passwordCriteria.number ? '#28a745' : '#6c757d',
-                            margin: '4px 0'
-                        }}>
-                            ✓ At least one number
-                        </p>
-                    </div>
-                </div>
-
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    margin: '8px 0'
-                }}>
-                    <input
-                        type="checkbox"
-                        name="subscribe"
-                        checked={formData.subscribe}
-                        onChange={handleChange}
-                        style={{
-                            marginRight: '8px'
-                        }}
-                    />
-                    <span style={{ fontSize: '14px' }}>
-                        Send me weekly emails with free resources
-                    </span>
-                </div>
-
-                <button 
-                    type="submit" 
-                    disabled={loading}
-                    style={{
-                        padding: '12px',
-                        backgroundColor: '#007bff',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '16px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold',
-                        marginTop: '8px'
-                    }}
-                >
-                    {loading ? "Creating account..." : "Sign Up"}
-                </button>
-
-                <p style={{
-                    textAlign: 'center',
-                    marginTop: '16px',
-                    fontSize: '14px'
-                }}>
-                    Already have an account? <a href="/login" style={{
-                        color: '#007bff',
-                        textDecoration: 'none'
-                    }}>Sign in</a>
-                </p>
-
-                <p style={{
-                    fontSize: '12px',
-                    color: '#6c757d',
-                    textAlign: 'center',
-                    marginTop: '24px'
-                }}>
-                    Protected by reCAPTCHA and subject to Google's <a href="https://policies.google.com/terms" style={{
-                        color: '#007bff',
-                        textDecoration: 'none'
-                    }}>Terms</a> and <a href="https://policies.google.com/privacy" style={{
-                        color: '#007bff',
-                        textDecoration: 'none'
-                    }}>Privacy</a>.
-                </p>
-            </form>
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
+        <div className="text-center">
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            Create your account
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Join us to get started
+          </p>
         </div>
-    </div>
-);
-```
 
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <span className="block sm:inline">{error}</span>
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+            <span className="block sm:inline">{success}</span>
+          </div>
+        )}
+
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="rounded-md shadow-sm space-y-4">
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                Username
+              </label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                required
+                value={formData.username}
+                onChange={handleChange}
+                className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="Enter your username"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email address
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="Enter your email"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={formData.password}
+                onChange={handleChange}
+                className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="Create a password"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                Phone (optional)
+              </label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={handleChange}
+                className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="Enter your phone number"
+              />
+            </div>
+          </div>
+
+          <div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processing...
+                </>
+              ) : 'Sign up'}
+            </button>
+          </div>
+        </form>
+
+        <div className="text-center text-sm text-gray-600">
+          <p>
+            Already have an account?{' '}
+            <a href="/signin" className="font-medium text-indigo-600 hover:text-indigo-500">
+              Sign in
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default Signup;
