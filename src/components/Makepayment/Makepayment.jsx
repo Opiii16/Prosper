@@ -8,7 +8,6 @@ const MakePayment = () => {
   const location = useLocation();
   const { cartItems = [], totalPrice = 0, itemCount = 0 } = location.state || {};
 
-  // Calculate total amount (fallback to passed totalPrice if calculation fails)
   const totalAmount = cartItems.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0) || totalPrice;
 
   const [phone, setPhone] = useState('');
@@ -72,11 +71,8 @@ const MakePayment = () => {
           date: new Date().toISOString()
         };
 
-        // Save mock order
         const existingOrders = JSON.parse(localStorage.getItem('prosperOrders')) || [];
         localStorage.setItem('prosperOrders', JSON.stringify([...existingOrders, mockOrder]));
-        
-        // Clear cart
         localStorage.removeItem('prosperCart');
         
         setMessage('Mock payment successful! Redirecting...');
@@ -87,15 +83,20 @@ const MakePayment = () => {
       }
 
       // PRODUCTION: Real API call
+      const apiUrl = process.env.REACT_APP_MPESA_API_URL;
+      if (!apiUrl) {
+        throw new Error('Payment API endpoint is not configured');
+      }
+
       const response = await axios.post(
-        process.env.REACT_APP_MPESA_API_URL || 'https://your-real-api.com/mpesa/stk-push',
+        apiUrl,
         paymentData,
         {
           headers: {
             'Authorization': `Bearer ${process.env.REACT_APP_MPESA_API_KEY || 'your-api-key'}`,
             'Content-Type': 'application/json'
           },
-          timeout: 10000 // 10 second timeout
+          timeout: 10000
         }
       );
 
@@ -112,14 +113,10 @@ const MakePayment = () => {
           date: new Date().toISOString()
         };
 
-        // Save order
         const existingOrders = JSON.parse(localStorage.getItem('prosperOrders')) || [];
         localStorage.setItem('prosperOrders', JSON.stringify([...existingOrders, order]));
-        
-        // Clear cart
         localStorage.removeItem('prosperCart');
 
-        // Redirect to success page
         setTimeout(() => {
           navigate('/payment-success', { 
             state: { 
@@ -135,17 +132,15 @@ const MakePayment = () => {
       console.error('Payment error:', error);
       let errorMessage = 'An error occurred during payment processing';
       
-      if (error.response) {
-        // Server responded with error status
+      if (error.message.includes('API endpoint')) {
+        errorMessage = 'Payment system is currently unavailable. Please try again later.';
+      } else if (error.response) {
         errorMessage = error.response.data?.message || 
                       `Server error (${error.response.status})`;
       } else if (error.request) {
-        // No response received
         errorMessage = 'Network error - could not reach payment server';
       } else if (error.code === 'ECONNABORTED') {
         errorMessage = 'Request timeout - please check your connection';
-      } else {
-        errorMessage = error.message;
       }
       
       setMessage(errorMessage);
@@ -154,7 +149,6 @@ const MakePayment = () => {
     }
   };
 
-  // Redirect if cart is empty
   useEffect(() => {
     if (cartItems.length === 0 && !totalPrice) {
       navigate('/cart');
@@ -204,7 +198,7 @@ const MakePayment = () => {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               required
-              pattern="[07|254]\d{8,9}"
+              pattern="(07[0-9]{8}|254[0-9]{9}|7[0-9]{8})"
               maxLength="12"
             />
             <small>Enter your Safaricom number (e.g., 0712345678 or 254712345678)</small>
