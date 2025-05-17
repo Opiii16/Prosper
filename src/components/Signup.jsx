@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import './Signup.css'; // 👈 Import the CSS
+import './Signup.css';
 
 const Signup = () => {
     const [formData, setFormData] = useState({
@@ -30,7 +30,6 @@ const Signup = () => {
             const response = await axios.post('https://prosperv21.pythonanywhere.com/api/signup', formData);
             setSuccess('Account created successfully!');
             localStorage.setItem('token', response.data.token);
-
             setTimeout(() => navigate('/'), 1500);
         } catch (err) {
             setLoading(false);
@@ -47,7 +46,7 @@ const Signup = () => {
     return (
         <div className="signup-container">
             <div className="signup-card">
-                <h2 className="signup-title">Sign Up</h2>
+                <h2 className="signup-title">Create an Account</h2>
 
                 <form className="signup-form" onSubmit={handleSubmit}>
                     {loading && <p className="signup-message" style={{ color: '#17a2b8' }}>Creating account...</p>}
@@ -88,7 +87,7 @@ const Signup = () => {
                         className="signup-input"
                         type="tel"
                         name="phone"
-                        placeholder="Phone (Optional)"
+                        placeholder="Phone (optional)"
                         value={formData.phone}
                         onChange={handleChange}
                     />
