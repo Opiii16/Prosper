@@ -6,8 +6,8 @@ import './Makepayment.css';
 const MakePayment = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [cartItems, setCartItems] = useState(location.state?.cartItems || []);
-  const [totalAmount, setTotalAmount] = useState(location.state?.totalPrice || 0);
+  const [cartItems, setCartItems] = useState([]);
+  const [totalAmount, setTotalAmount] = useState(0);
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -96,9 +96,9 @@ const MakePayment = () => {
     initialize();
   }, [navigate]);
 
-  const processPayment = async (token, formattedPhone) => {
+  const initiatePayment = async (token, formattedPhone) => {
     try {
-      // 1. Verify cart exists and has items
+      // First verify the cart still has items
       const cartVerify = await axios.get('https://prosperv21.pythonanywhere.com/api/cart', {
         headers: { 'x-access-token': token }
       });
@@ -107,7 +107,7 @@ const MakePayment = () => {
         throw new Error('Your cart is empty. Please add items before payment.');
       }
 
-      // 2. Create Order
+      // Create the order
       const orderRes = await axios.post(
         'https://prosperv21.pythonanywhere.com/api/checkout',
         {
@@ -132,7 +132,7 @@ const MakePayment = () => {
 
       const orderId = orderRes.data.order_id;
 
-      // 3. Initiate Payment
+      // Initiate M-Pesa payment
       const payRes = await axios.post(
         'https://prosperv21.pythonanywhere.com/api/mpesa/stkpush',
         {
@@ -159,7 +159,7 @@ const MakePayment = () => {
     }
   };
 
-  const pollPaymentStatus = async (token, orderId) => {
+  const verifyPaymentStatus = async (token, orderId) => {
     try {
       const statusRes = await axios.get(
         `https://prosperv21.pythonanywhere.com/api/orders/${orderId}`,
@@ -196,22 +196,23 @@ const MakePayment = () => {
     const formattedPhone = formatPhoneNumber(phone);
 
     try {
-      // Process payment (create order + initiate STK push)
-      const { orderId, paymentData } = await processPayment(token, formattedPhone);
+      // Step 1: Initiate payment process
+      const { orderId, paymentData } = await initiatePayment(token, formattedPhone);
       
       setMessage('Payment request sent. Please check your phone to complete payment...');
 
-      // Poll for payment status
+      // Step 2: Poll for payment status
       let attempts = 0;
-      const maxAttempts = 10; // 30 seconds total (3s * 10)
-      const pollInterval = 3000; // 3 seconds
+      const maxAttempts = 10; // Will try for 30 seconds total (3s * 10)
+      const pollInterval = 3000; // Check every 3 seconds
 
       const checkStatus = async () => {
         attempts++;
         try {
-          const order = await pollPaymentStatus(token, orderId);
+          const order = await verifyPaymentStatus(token, orderId);
           
           if (order.payment_status === 'Paid') {
+            // Payment successful - navigate to success page
             navigate('/payment-success', {
               state: {
                 orderDetails: order,
@@ -224,6 +225,7 @@ const MakePayment = () => {
             throw new Error('Payment failed. Please try again.');
           }
 
+          // Continue polling if we haven't reached max attempts
           if (attempts < maxAttempts) {
             setTimeout(checkStatus, pollInterval);
           } else {
@@ -236,7 +238,7 @@ const MakePayment = () => {
         }
       };
 
-      // Initial status check after 5 seconds
+      // Start polling after 5 seconds to give time for payment processing
       setTimeout(checkStatus, 5000);
     } catch (error) {
       console.error('Payment processing failed:', error);
