@@ -6,8 +6,8 @@ import './Makepayment.css';
 const MakePayment = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [cartItems, setCartItems] = useState(location.state?.cartItems || []);
-  const [totalAmount, setTotalAmount] = useState(location.state?.totalPrice || 0);
+  const [cartItems, setCartItems] = useState([]);
+  const [totalAmount, setTotalAmount] = useState(0);
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -24,23 +24,18 @@ const MakePayment = () => {
   const validateMpesaNumber = (number) => {
     const cleaned = number.replace(/\D/g, '');
     return /^(07\d{8}|254\d{9}|7\d{8})$/.test(cleaned);
-  };
+  };                                                                                                                                                                                                                                                 
 
   const fetchCart = async (token) => {
     try {
       const res = await axios.get('https://prosperv21.pythonanywhere.com/api/cart', {
-        headers: {
-          'x-access-token': token
-        }
+        headers: { 'x-access-token': token }
       });
       const items = res.data.cart || [];
       setCartItems(items);
       const total = items.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
       setTotalAmount(total);
-
-      if (items.length === 0) {
-        navigate('/cart');
-      }
+      if (items.length === 0) navigate('/cart');
     } catch (error) {
       console.error('Error fetching cart:', error);
       setMessage('Failed to load cart. Please try again.');
@@ -50,9 +45,7 @@ const MakePayment = () => {
   const fetchUser = async (token) => {
     try {
       const res = await axios.get('https://prosperv21.pythonanywhere.com/api/profile', {
-        headers: {
-          'x-access-token': token
-        }
+        headers: { 'x-access-token': token }
       });
       setUser(res.data);
       if (res.data.phone) setPhone(res.data.phone);
@@ -63,14 +56,9 @@ const MakePayment = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/signin');
-      return;
-    }
+    if (!token) return navigate('/signin');
     fetchUser(token);
-    if (cartItems.length === 0) {
-      fetchCart(token);
-    }
+    fetchCart(token);
   }, [navigate]);
 
   const handleSubmit = async (e) => {
@@ -79,7 +67,6 @@ const MakePayment = () => {
       setMessage('Please enter a valid M-Pesa number (0712345678 or 254712345678)');
       return;
     }
-
     setIsProcessing(true);
     setMessage('Initiating M-Pesa payment...');
 
@@ -87,52 +74,28 @@ const MakePayment = () => {
     const formattedPhone = formatPhoneNumber(phone);
 
     try {
-      // 1. Create Order
       const orderRes = await axios.post(
         'https://prosperv21.pythonanywhere.com/api/checkout',
-        {
-          shipping_address: 'Nairobi, Kenya',
-          payment_method: 'mpesa'
-        },
-        {
-          headers: {
-            'x-access-token': token,
-            'Content-Type': 'application/json'
-          }
-        }
+        { shipping_address: 'Nairobi, Kenya', payment_method: 'mpesa' },
+        { headers: { 'x-access-token': token, 'Content-Type': 'application/json' } }
       );
 
       const orderId = orderRes.data.order_id;
 
-      // 2. Initiate Payment
       const payRes = await axios.post(
         'https://prosperv21.pythonanywhere.com/api/mpesa/stkpush',
-        {
-          phone: formattedPhone,
-          amount: totalAmount,
-          order_id: orderId
-        },
-        {
-          headers: {
-            'x-access-token': token,
-            'Content-Type': 'application/json'
-          }
-        }
+        { phone: formattedPhone, amount: totalAmount, order_id: orderId },
+        { headers: { 'x-access-token': token, 'Content-Type': 'application/json' } }
       );
 
       if (payRes.data.success) {
         setMessage('Payment request sent. Check your phone.');
 
-        // Poll for payment status
         const checkStatus = async () => {
           try {
             const statusRes = await axios.get(
               `https://prosperv21.pythonanywhere.com/api/orders/${orderId}`,
-              {
-                headers: {
-                  'x-access-token': token
-                }
-              }
+              { headers: { 'x-access-token': token } }
             );
             if (statusRes.data.order.payment_status === 'Paid') {
               navigate('/payment-success', {
@@ -180,7 +143,10 @@ const MakePayment = () => {
                 {cartItems.map((item, index) => (
                   <div key={index} className="order-item">
                     <div className="item-image">
-                      <img src={item.image_url} alt={item.name} />
+                      <img
+                        src={item.image || 'https://via.placeholder.com/80'}
+                        alt={item.name}
+                      />
                     </div>
                     <div className="item-info">
                       <span className="item-name">{item.name}</span>
@@ -227,27 +193,10 @@ const MakePayment = () => {
               )}
 
               <div className="payment-actions">
-                <button
-                  type="submit"
-                  className="pay-button"
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <>
-                      <span className="spinner"></span>
-                      Processing...
-                    </>
-                  ) : (
-                    `Pay ${totalAmount.toLocaleString()} KSH`
-                  )}
+                <button type="submit" className="pay-button" disabled={isProcessing}>
+                  {isProcessing ? <><span className="spinner"></span> Processing...</> : `Pay ${totalAmount.toLocaleString()} KSH`}
                 </button>
-
-                <button
-                  type="button"
-                  className="back-button"
-                  onClick={() => navigate('/cart')}
-                  disabled={isProcessing}
-                >
+                <button type="button" className="back-button" onClick={() => navigate('/cart')} disabled={isProcessing}>
                   Back to Cart
                 </button>
               </div>
@@ -262,7 +211,7 @@ const MakePayment = () => {
           </div>
           <div className="support-info">
             <span className="support-icon">📞</span>
-            <span>Need help? Call +254 700 000000</span>
+            <span>Need help? Call +254 745876122</span>
           </div>
         </div>
       </div>
