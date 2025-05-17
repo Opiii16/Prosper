@@ -36,24 +36,24 @@ const MakePayment = () => {
         }
       });
       
-      if (!res.data || !res.data.cart) {
+      if (!res.data?.cart) {
         throw new Error('Cart data not found in response');
       }
       
       const items = res.data.cart || [];
       if (items.length === 0) {
         setMessage('Your cart is empty');
-        navigate('/cart');
-        return;
+        return items;
       }
       
       setCartItems(items);
       const total = items.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
       setTotalAmount(total);
+      return items;
     } catch (error) {
       console.error('Error fetching cart:', error);
       setMessage('Failed to load cart. Please try again.');
-      navigate('/cart');
+      return [];
     }
   };
 
@@ -78,10 +78,14 @@ const MakePayment = () => {
       return;
     }
     
-    const fetchData = async () => {
+    const initialize = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([fetchUser(token), fetchCart(token)]);
+        await fetchUser(token);
+        const items = await fetchCart(token);
+        if (items.length === 0) {
+          navigate('/cart', { state: { fromPayment: true } });
+        }
       } catch (error) {
         console.error('Initialization error:', error);
       } finally {
@@ -89,8 +93,89 @@ const MakePayment = () => {
       }
     };
     
-    fetchData();
+    initialize();
   }, [navigate]);
+
+  const processPayment = async (token, formattedPhone) => {
+    try {
+      // 1. Verify cart exists and has items
+      const cartVerify = await axios.get('https://prosperv21.pythonanywhere.com/api/cart', {
+        headers: { 'x-access-token': token }
+      });
+      
+      if (!cartVerify.data?.cart || cartVerify.data.cart.length === 0) {
+        throw new Error('Your cart is empty. Please add items before payment.');
+      }
+
+      // 2. Create Order
+      const orderRes = await axios.post(
+        'https://prosperv21.pythonanywhere.com/api/checkout',
+        {
+          shipping_address: 'Nairobi, Kenya',
+          payment_method: 'mpesa',
+          cart_items: cartItems.map(item => ({
+            product_id: item.id,
+            quantity: item.quantity || 1
+          }))
+        },
+        {
+          headers: {
+            'x-access-token': token,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!orderRes.data?.order_id) {
+        throw new Error('Failed to create order');
+      }
+
+      const orderId = orderRes.data.order_id;
+
+      // 3. Initiate Payment
+      const payRes = await axios.post(
+        'https://prosperv21.pythonanywhere.com/api/mpesa/stkpush',
+        {
+          phone: formattedPhone,
+          amount: totalAmount,
+          order_id: orderId
+        },
+        {
+          headers: {
+            'x-access-token': token,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!payRes.data?.success) {
+        throw new Error(payRes.data?.message || 'Payment initiation failed');
+      }
+
+      return { orderId, paymentData: payRes.data };
+    } catch (error) {
+      console.error('Payment processing error:', error);
+      throw error;
+    }
+  };
+
+  const pollPaymentStatus = async (token, orderId) => {
+    try {
+      const statusRes = await axios.get(
+        `https://prosperv21.pythonanywhere.com/api/orders/${orderId}`,
+        { headers: { 'x-access-token': token } }
+      );
+      
+      if (!statusRes.data?.order) {
+        throw new Error('Order not found');
+      }
+      
+      return statusRes.data.order;
+    } catch (error) {
+      console.error('Status check error:', error);
+      throw error;
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -111,104 +196,55 @@ const MakePayment = () => {
     const formattedPhone = formatPhoneNumber(phone);
 
     try {
-      // Verify cart exists first
-      const cartRes = await axios.get('https://prosperv21.pythonanywhere.com/api/cart', {
-        headers: {
-          'x-access-token': token
-        }
-      });
+      // Process payment (create order + initiate STK push)
+      const { orderId, paymentData } = await processPayment(token, formattedPhone);
+      
+      setMessage('Payment request sent. Please check your phone to complete payment...');
 
-      if (!cartRes.data.cart || cartRes.data.cart.length === 0) {
-        throw new Error('Cart is empty');
-      }
+      // Poll for payment status
+      let attempts = 0;
+      const maxAttempts = 10; // 30 seconds total (3s * 10)
+      const pollInterval = 3000; // 3 seconds
 
-      // 1. Create Order
-      const orderRes = await axios.post(
-        'https://prosperv21.pythonanywhere.com/api/checkout',
-        {
-          shipping_address: 'Nairobi, Kenya',
-          payment_method: 'mpesa',
-          cart_items: cartItems // Include cart items in the order
-        },
-        {
-          headers: {
-            'x-access-token': token,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      const orderId = orderRes.data.order_id;
-
-      // 2. Initiate Payment
-      const payRes = await axios.post(
-        'https://prosperv21.pythonanywhere.com/api/mpesa/stkpush',
-        {
-          phone: formattedPhone,
-          amount: totalAmount,
-          order_id: orderId
-        },
-        {
-          headers: {
-            'x-access-token': token,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (payRes.data.success) {
-        setMessage('Payment request sent. Check your phone.');
-
-        // Poll for payment status
-        const checkStatus = async () => {
-          try {
-            const statusRes = await axios.get(
-              `https://prosperv21.pythonanywhere.com/api/orders/${orderId}`,
-              {
-                headers: {
-                  'x-access-token': token
-                }
+      const checkStatus = async () => {
+        attempts++;
+        try {
+          const order = await pollPaymentStatus(token, orderId);
+          
+          if (order.payment_status === 'Paid') {
+            navigate('/payment-success', {
+              state: {
+                orderDetails: order,
+                paymentResponse: paymentData,
+                cartItems
               }
-            );
-            
-            if (!statusRes.data.order) {
-              throw new Error('Order not found');
-            }
-            
-            if (statusRes.data.order.payment_status === 'Paid') {
-              navigate('/payment-success', {
-                state: {
-                  orderDetails: statusRes.data.order,
-                  paymentResponse: payRes.data,
-                  cartItems // Include cart items in success state
-                }
-              });
-            } else if (statusRes.data.order.payment_status === 'Failed') {
-              throw new Error('Payment failed');
-            } else {
-              setTimeout(checkStatus, 3000);
-            }
-          } catch (err) {
-            console.error('Status check failed:', err);
-            setMessage(err.response?.data?.message || err.message || 'Payment verification failed');
-            setIsProcessing(false);
+            });
+            return;
+          } else if (order.payment_status === 'Failed') {
+            throw new Error('Payment failed. Please try again.');
           }
-        };
 
-        setTimeout(checkStatus, 5000);
-      } else {
-        setMessage(payRes.data.message || 'Payment initiation failed.');
-        setIsProcessing(false);
-      }
-    } catch (err) {
-      console.error('Payment error:', err);
-      const msg = err.response?.data?.message || 
-                  err.message || 
-                  'Payment processing failed. Please check your cart.';
-      setMessage(msg);
+          if (attempts < maxAttempts) {
+            setTimeout(checkStatus, pollInterval);
+          } else {
+            throw new Error('Payment verification timeout. Please check your order history.');
+          }
+        } catch (error) {
+          console.error('Payment verification error:', error);
+          setMessage(error.message);
+          setIsProcessing(false);
+        }
+      };
+
+      // Initial status check after 5 seconds
+      setTimeout(checkStatus, 5000);
+    } catch (error) {
+      console.error('Payment processing failed:', error);
+      setMessage(error.response?.data?.message || error.message || 'Payment processing failed');
       setIsProcessing(false);
       
-      if (err.message.includes('Cart') || err.response?.status === 404) {
+      // Only navigate to cart if it's specifically a cart-related error
+      if (error.message.includes('cart') || error.message.includes('Cart')) {
         setTimeout(() => navigate('/cart'), 2000);
       }
     }
@@ -286,7 +322,7 @@ const MakePayment = () => {
               {message && (
                 <div className={`payment-message ${
                   isProcessing ? 'processing' :
-                  message.toLowerCase().includes('sent') ? 'success' :
+                  message.toLowerCase().includes('sent') || message.toLowerCase().includes('complete') ? 'success' :
                   message.toLowerCase().includes('fail') ? 'error' : 'info'
                 }`}>
                   {message}
