@@ -24,18 +24,23 @@ const MakePayment = () => {
   const validateMpesaNumber = (number) => {
     const cleaned = number.replace(/\D/g, '');
     return /^(07\d{8}|254\d{9}|7\d{8})$/.test(cleaned);
-  };                                                                                                                                                                                                                                                 
+  };
 
   const fetchCart = async (token) => {
     try {
       const res = await axios.get('https://prosperv21.pythonanywhere.com/api/cart', {
-        headers: { 'x-access-token': token }
+        headers: {
+          'x-access-token': token
+        }
       });
       const items = res.data.cart || [];
       setCartItems(items);
       const total = items.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
       setTotalAmount(total);
-      if (items.length === 0) navigate('/cart');
+
+      if (items.length === 0) {
+        navigate('/cart');
+      }
     } catch (error) {
       console.error('Error fetching cart:', error);
       setMessage('Failed to load cart. Please try again.');
@@ -45,7 +50,9 @@ const MakePayment = () => {
   const fetchUser = async (token) => {
     try {
       const res = await axios.get('https://prosperv21.pythonanywhere.com/api/profile', {
-        headers: { 'x-access-token': token }
+        headers: {
+          'x-access-token': token
+        }
       });
       setUser(res.data);
       if (res.data.phone) setPhone(res.data.phone);
@@ -56,7 +63,10 @@ const MakePayment = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (!token) return navigate('/signin');
+    if (!token) {
+      navigate('/signin');
+      return;
+    }
     fetchUser(token);
     fetchCart(token);
   }, [navigate]);
@@ -67,6 +77,12 @@ const MakePayment = () => {
       setMessage('Please enter a valid M-Pesa number (0712345678 or 254712345678)');
       return;
     }
+
+    if (cartItems.length === 0) {
+      setMessage('Your cart is empty. Please add items before proceeding to payment.');
+      return;
+    }
+
     setIsProcessing(true);
     setMessage('Initiating M-Pesa payment...');
 
@@ -76,16 +92,33 @@ const MakePayment = () => {
     try {
       const orderRes = await axios.post(
         'https://prosperv21.pythonanywhere.com/api/checkout',
-        { shipping_address: 'Nairobi, Kenya', payment_method: 'mpesa' },
-        { headers: { 'x-access-token': token, 'Content-Type': 'application/json' } }
+        {
+          shipping_address: 'Nairobi, Kenya',
+          payment_method: 'mpesa'
+        },
+        {
+          headers: {
+            'x-access-token': token,
+            'Content-Type': 'application/json'
+          }
+        }
       );
 
       const orderId = orderRes.data.order_id;
 
       const payRes = await axios.post(
         'https://prosperv21.pythonanywhere.com/api/mpesa/stkpush',
-        { phone: formattedPhone, amount: totalAmount, order_id: orderId },
-        { headers: { 'x-access-token': token, 'Content-Type': 'application/json' } }
+        {
+          phone: formattedPhone,
+          amount: totalAmount,
+          order_id: orderId
+        },
+        {
+          headers: {
+            'x-access-token': token,
+            'Content-Type': 'application/json'
+          }
+        }
       );
 
       if (payRes.data.success) {
@@ -95,7 +128,11 @@ const MakePayment = () => {
           try {
             const statusRes = await axios.get(
               `https://prosperv21.pythonanywhere.com/api/orders/${orderId}`,
-              { headers: { 'x-access-token': token } }
+              {
+                headers: {
+                  'x-access-token': token
+                }
+              }
             );
             if (statusRes.data.order.payment_status === 'Paid') {
               navigate('/payment-success', {
@@ -144,8 +181,12 @@ const MakePayment = () => {
                   <div key={index} className="order-item">
                     <div className="item-image">
                       <img
-                        src={item.image || 'https://via.placeholder.com/80'}
+                        src={item.image}
                         alt={item.name}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = '/path/to/placeholder.jpg';
+                        }}
                       />
                     </div>
                     <div className="item-info">
@@ -220,3 +261,5 @@ const MakePayment = () => {
 };
 
 export default MakePayment;
+
+ 
