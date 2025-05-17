@@ -1,6 +1,6 @@
 /* Navbar.css */
 .prosper-navbar {
-  background: linear-gradient(90deg, #000000, #ffffff, #ff0000);
+  background: linear-gradient(90deg, #000000, #ff0000);
   color: #fff;
   padding: 10px 20px;
   position: relative;
@@ -284,5 +284,258 @@
 
   .mobile-toggle {
     display: block;
+  }
+}
+/* === GENERAL STYLES === */
+.prosper-navbar {
+  background-color: #000;
+  color: white;
+  font-family: sans-serif;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  padding: 10px 20px;
+}
+
+.navbar-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* === BRANDING === */
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.navbar-logo-icon {
+  height: 40px;
+}
+
+.nav-logo-text {
+  color: white;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+/* === MOBILE TOGGLE === */
+.mobile-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 18px;
+  width: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.bar {
+  height: 3px;
+  width: 100%;
+  background-color: white;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.navbar-menu {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  align-items: center;
+}
+
+/* === LEFT NAVIGATION === */
+.navbar-left {
+  display: flex;
+  flex-grow: 1;
+}
+
+.navbar-nav {
+  list-style: none;
+  display: flex;
+  gap: 20px;
+  padding-left: 0;
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.nav-item {
+  position: relative;
+}
+
+.nav-link {
+  color: white;
+  text-decoration: none;
+  font-size: 1rem;
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+/* === DROPDOWNS === */
+.dropdown-arrow {
+  margin-left: 5px;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: #111;
+  padding: 10px;
+  min-width: 150px;
+  z-index: 10;
+}
+
+.dropdown-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-item {
+  color: white;
+  padding: 6px 10px;
+  text-decoration: none;
+}
+
+.dropdown-item:hover {
+  background-color: #222;
+}
+
+/* === RIGHT NAVIGATION === */
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* Search bar */
+.search-form {
+  display: flex;
+  border: 1px solid white;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.search-input {
+  background: transparent;
+  border: none;
+  color: white;
+  padding: 6px 8px;
+  outline: none;
+  width: 150px;
+}
+
+.search-button {
+  background: white;
+  border: none;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+/* Auth buttons */
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-btn {
+  padding: 6px 12px;
+  border-radius: 5px;
+  font-size: 0.9rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-outline-light {
+  background: transparent;
+  border: 1px solid white;
+  color: white;
+}
+
+.btn-light {
+  background: white;
+  color: black;
+}
+
+/* Cart */
+.auth-cart-container {
+  position: relative;
+}
+
+.cart-badge {
+  position: absolute;
+  top: -5px;
+  right: -10px;
+  background: red;
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 5px;
+  border-radius: 50%;
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 1024px) {
+  .navbar-menu {
+    flex-direction: column;
+    align-items: flex-start;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out;
+  }
+
+  .navbar-menu.open {
+    max-height: 800px;
+  }
+
+  .mobile-toggle {
+    display: flex;
+  }
+
+  .navbar-left,
+  .navbar-right {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .navbar-nav {
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .search-form {
+    width: 100%;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .auth-buttons {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (min-width: 1025px) {
+  .navbar-menu {
+    flex-direction: row;
+    max-height: none !important;
+  }
+
+  .navbar-right {
+    margin-top: 0;
   }
 }
