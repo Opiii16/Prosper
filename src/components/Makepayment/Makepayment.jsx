@@ -143,11 +143,11 @@ const MakePayment = () => {
   };
 
   // Check for user authentication and cart items
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/signin');
-      return;
+  // useEffect(() => {
+  //   const token = localStorage.getItem('token');
+  //   if (!token) {
+  //     navigate('/signin');
+  //     return;
     }
 
     // Fetch user data
