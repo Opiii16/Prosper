@@ -21,7 +21,7 @@ function App() {
        
         <main className="app-content">
           <Routes>
-            <Route path="/Homepage" element={<HomePage />} />
+            <Route path="/" element={<HomePage />} />
             <Route path="/signin" element={<Signin />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/" element={<Footer/>} />
