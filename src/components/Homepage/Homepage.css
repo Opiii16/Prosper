@@ -149,9 +149,10 @@
 
 .product-image img {
   width: 100%;
-  height: 260px;
-  object-fit: cover;
+  height: 180px; /* Reduced from 260px */
+  object-fit: contain;
   border-bottom: 1px solid #eee;
+  background-color: #f9f9f9;
 }
 
 .product-content {
@@ -288,9 +289,11 @@ button.btn-success:hover {
   }
 
   .product-image img {
-    height: 200px;
+    height: 160px; /* Smaller height for smaller screens */
   }
 }
+
+/* Carousel slide override */
 .carousel-slide {
   position: relative;
   overflow: hidden;
