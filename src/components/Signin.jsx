@@ -3,40 +3,57 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 const Signin = () => {
-    const [emailUsername, setEmailUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState('');
+    const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading('Please wait...');
+        setLoading(true);
+        setError('');
+        setSuccess('');
+
         try {
-            const data = new FormData();
-            data.append('email', emailUsername);
-            data.append('password', password);
+            const response = await axios.post('https://prosperv21.pythonanywhere.com/api/signin', {
+                email: email,
+                password: password
+            });
 
-            const response = await axios.post('https://prosperv21.pythonanywhere.com/api/signin', data);
-
-            setLoading('');
-
-            if (response.data.user) {
-                setSuccess('Login Success');
-                localStorage.setItem('user', JSON.stringify(response.data.user));
+            setSuccess('Login successful!');
+            
+            // Store user data and token
+            localStorage.setItem('user', JSON.stringify(response.data.user));
+            localStorage.setItem('token', response.data.token);
+            
+            // Redirect after 1 second to show success message
+            setTimeout(() => {
                 navigate('/');
-            } else {
-                setError('Login Failed');
-            }
-        } catch (error) {
-            setLoading('');
-            setError('Something went wrong!');
-        }
+            }, 1000);
 
-        console.log({ emailUsername, password });
-        setEmailUsername('');
-        setPassword('');
+        } catch (error) {
+            setLoading(false);
+            if (error.response) {
+                // Handle different error statuses from backend
+                switch (error.response.status) {
+                    case 400:
+                        setError('Email and password are required!');
+                        break;
+                    case 401:
+                        setError('Wrong password!');
+                        break;
+                    case 404:
+                        setError('User not found!');
+                        break;
+                    default:
+                        setError('Login failed. Please try again.');
+                }
+            } else {
+                setError('Network error. Please check your connection.');
+            }
+        }
     };
 
     return (
@@ -67,15 +84,15 @@ const Signin = () => {
                     flexDirection: 'column',
                     gap: '16px'
                 }}>
-                    {loading && <p style={{ color: '#17a2b8', textAlign: 'center' }}>{loading}</p>}
+                    {loading && <p style={{ color: '#17a2b8', textAlign: 'center' }}>Authenticating...</p>}
                     {success && <p style={{ color: '#28a745', textAlign: 'center' }}>{success}</p>}
                     {error && <p style={{ color: '#dc3545', textAlign: 'center' }}>{error}</p>}
 
                     <input
-                        type="text"
-                        placeholder="Email or username"
-                        value={emailUsername}
-                        onChange={(e) => setEmailUsername(e.target.value)}
+                        type="email"
+                        placeholder="Email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         required
                         style={{
                             padding: '12px',
@@ -99,19 +116,20 @@ const Signin = () => {
                     />
                     <button 
                         type="submit"
+                        disabled={loading}
                         style={{
                             padding: '12px',
-                            backgroundColor: '#007bff',
+                            backgroundColor: loading ? '#6c757d' : '#007bff',
                             color: 'white',
                             border: 'none',
                             borderRadius: '4px',
                             fontSize: '16px',
-                            cursor: 'pointer',
+                            cursor: loading ? 'not-allowed' : 'pointer',
                             fontWeight: 'bold',
                             marginTop: '8px'
                         }}
                     >
-                        Log in
+                        {loading ? 'Logging in...' : 'Log in'}
                     </button>
                     
                     <p style={{ textAlign: 'center', marginTop: '16px' }}>
@@ -124,8 +142,6 @@ const Signin = () => {
                         gap: '8px',
                         margin: '8px 0'
                     }}>
-                        <a href="/forgot-username" style={{ color: '#6c757d', textDecoration: 'none', fontSize: '14px' }}>Forgot username?</a>
-                        <span style={{ color: '#6c757d' }}>|</span>
                         <a href="/forgot-password" style={{ color: '#6c757d', textDecoration: 'none', fontSize: '14px' }}>Forgot password?</a>
                     </div>
                     
