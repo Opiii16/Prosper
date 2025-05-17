@@ -6,13 +6,12 @@ import './Makepayment.css';
 const MakePayment = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [cartItems, setCartItems] = useState([]);
-  const [totalAmount, setTotalAmount] = useState(0);
+  const [cartItems, setCartItems] = useState(location.state?.cartItems || []);
+  const [totalAmount, setTotalAmount] = useState(location.state?.totalPrice || 0);
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
 
   const formatPhoneNumber = (number) => {
     const cleaned = number.replace(/\D/g, '');
@@ -31,29 +30,20 @@ const MakePayment = () => {
     try {
       const res = await axios.get('https://prosperv21.pythonanywhere.com/api/cart', {
         headers: {
-          'x-access-token': token,
-          'Cache-Control': 'no-cache'
+          'x-access-token': token
         }
       });
-      
-      if (!res.data?.cart) {
-        throw new Error('Cart data not found in response');
-      }
-      
       const items = res.data.cart || [];
-      if (items.length === 0) {
-        setMessage('Your cart is empty');
-        return items;
-      }
-      
       setCartItems(items);
       const total = items.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
       setTotalAmount(total);
-      return items;
+
+      if (items.length === 0) {
+        navigate('/cart');
+      }
     } catch (error) {
       console.error('Error fetching cart:', error);
       setMessage('Failed to load cart. Please try again.');
-      return [];
     }
   };
 
@@ -77,46 +67,32 @@ const MakePayment = () => {
       navigate('/signin');
       return;
     }
-    
-    const initialize = async () => {
-      setIsLoading(true);
-      try {
-        await fetchUser(token);
-        const items = await fetchCart(token);
-        if (items.length === 0) {
-          navigate('/cart', { state: { fromPayment: true } });
-        }
-      } catch (error) {
-        console.error('Initialization error:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    initialize();
+    fetchUser(token);
+    if (cartItems.length === 0) {
+      fetchCart(token);
+    }
   }, [navigate]);
 
-  const initiatePayment = async (token, formattedPhone) => {
-    try {
-      // First verify the cart still has items
-      const cartVerify = await axios.get('https://prosperv21.pythonanywhere.com/api/cart', {
-        headers: { 'x-access-token': token }
-      });
-      
-      if (!cartVerify.data?.cart || cartVerify.data.cart.length === 0) {
-        throw new Error('Your cart is empty. Please add items before payment.');
-      }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateMpesaNumber(phone)) {
+      setMessage('Please enter a valid M-Pesa number (0712345678 or 254712345678)');
+      return;
+    }
 
-      // Create the order
+    setIsProcessing(true);
+    setMessage('Initiating M-Pesa payment...');
+
+    const token = localStorage.getItem('token');
+    const formattedPhone = formatPhoneNumber(phone);
+
+    try {
+      // 1. Create Order
       const orderRes = await axios.post(
         'https://prosperv21.pythonanywhere.com/api/checkout',
         {
           shipping_address: 'Nairobi, Kenya',
-          payment_method: 'mpesa',
-          cart_items: cartItems.map(item => ({
-            product_id: item.id,
-            quantity: item.quantity || 1
-          }))
+          payment_method: 'mpesa'
         },
         {
           headers: {
@@ -126,13 +102,9 @@ const MakePayment = () => {
         }
       );
 
-      if (!orderRes.data?.order_id) {
-        throw new Error('Failed to create order');
-      }
-
       const orderId = orderRes.data.order_id;
 
-      // Initiate M-Pesa payment
+      // 2. Initiate Payment
       const payRes = await axios.post(
         'https://prosperv21.pythonanywhere.com/api/mpesa/stkpush',
         {
@@ -148,119 +120,49 @@ const MakePayment = () => {
         }
       );
 
-      if (!payRes.data?.success) {
-        throw new Error(payRes.data?.message || 'Payment initiation failed');
-      }
+      if (payRes.data.success) {
+        setMessage('Payment request sent. Check your phone.');
 
-      return { orderId, paymentData: payRes.data };
-    } catch (error) {
-      console.error('Payment processing error:', error);
-      throw error;
-    }
-  };
-
-  const verifyPaymentStatus = async (token, orderId) => {
-    try {
-      const statusRes = await axios.get(
-        `https://prosperv21.pythonanywhere.com/api/orders/${orderId}`,
-        { headers: { 'x-access-token': token } }
-      );
-      
-      if (!statusRes.data?.order) {
-        throw new Error('Order not found');
-      }
-      
-      return statusRes.data.order;
-    } catch (error) {
-      console.error('Status check error:', error);
-      throw error;
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateMpesaNumber(phone)) {
-      setMessage('Please enter a valid M-Pesa number (0712345678 or 254712345678)');
-      return;
-    }
-
-    setIsProcessing(true);
-    setMessage('Initiating M-Pesa payment...');
-
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/signin');
-      return;
-    }
-
-    const formattedPhone = formatPhoneNumber(phone);
-
-    try {
-      // Step 1: Initiate payment process
-      const { orderId, paymentData } = await initiatePayment(token, formattedPhone);
-      
-      setMessage('Payment request sent. Please check your phone to complete payment...');
-
-      // Step 2: Poll for payment status
-      let attempts = 0;
-      const maxAttempts = 10; // Will try for 30 seconds total (3s * 10)
-      const pollInterval = 3000; // Check every 3 seconds
-
-      const checkStatus = async () => {
-        attempts++;
-        try {
-          const order = await verifyPaymentStatus(token, orderId);
-          
-          if (order.payment_status === 'Paid') {
-            // Payment successful - navigate to success page
-            navigate('/payment-success', {
-              state: {
-                orderDetails: order,
-                paymentResponse: paymentData,
-                cartItems
+        // Poll for payment status
+        const checkStatus = async () => {
+          try {
+            const statusRes = await axios.get(
+              `https://prosperv21.pythonanywhere.com/api/orders/${orderId}`,
+              {
+                headers: {
+                  'x-access-token': token
+                }
               }
-            });
-            return;
-          } else if (order.payment_status === 'Failed') {
-            throw new Error('Payment failed. Please try again.');
+            );
+            if (statusRes.data.order.payment_status === 'Paid') {
+              navigate('/payment-success', {
+                state: {
+                  orderDetails: statusRes.data.order,
+                  paymentResponse: payRes.data
+                }
+              });
+            } else {
+              setTimeout(checkStatus, 3000);
+            }
+          } catch (err) {
+            console.error('Status check failed:', err);
+            setMessage('Payment verification failed. Please check order history.');
+            setIsProcessing(false);
           }
+        };
 
-          // Continue polling if we haven't reached max attempts
-          if (attempts < maxAttempts) {
-            setTimeout(checkStatus, pollInterval);
-          } else {
-            throw new Error('Payment verification timeout. Please check your order history.');
-          }
-        } catch (error) {
-          console.error('Payment verification error:', error);
-          setMessage(error.message);
-          setIsProcessing(false);
-        }
-      };
-
-      // Start polling after 5 seconds to give time for payment processing
-      setTimeout(checkStatus, 5000);
-    } catch (error) {
-      console.error('Payment processing failed:', error);
-      setMessage(error.response?.data?.message || error.message || 'Payment processing failed');
-      setIsProcessing(false);
-      
-      // Only navigate to cart if it's specifically a cart-related error
-      if (error.message.includes('cart') || error.message.includes('Cart')) {
-        setTimeout(() => navigate('/cart'), 2000);
+        setTimeout(checkStatus, 5000);
+      } else {
+        setMessage(payRes.data.message || 'Payment initiation failed.');
+        setIsProcessing(false);
       }
+    } catch (err) {
+      console.error('Payment error:', err);
+      const msg = err.response?.data?.message || 'Payment processing failed.';
+      setMessage(msg);
+      setIsProcessing(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="payment-container">
-        <div className="payment-card">
-          <div className="loading-spinner">Loading your payment details...</div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="payment-container">
@@ -270,7 +172,7 @@ const MakePayment = () => {
           <p>Secure M-Pesa STK Push Payment</p>
         </div>
 
-        {cartItems.length > 0 ? (
+        {cartItems.length > 0 && (
           <>
             <div className="payment-summary">
               <h4>Order Summary ({cartItems.length} items)</h4>
@@ -278,14 +180,7 @@ const MakePayment = () => {
                 {cartItems.map((item, index) => (
                   <div key={index} className="order-item">
                     <div className="item-image">
-                      <img 
-                        src={item.image_url || 'https://via.placeholder.com/80'} 
-                        alt={item.name}
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = 'https://via.placeholder.com/80';
-                        }}
-                      />
+                      <img src={item.image_url} alt={item.name} />
                     </div>
                     <div className="item-info">
                       <span className="item-name">{item.name}</span>
@@ -324,7 +219,7 @@ const MakePayment = () => {
               {message && (
                 <div className={`payment-message ${
                   isProcessing ? 'processing' :
-                  message.toLowerCase().includes('sent') || message.toLowerCase().includes('complete') ? 'success' :
+                  message.toLowerCase().includes('sent') ? 'success' :
                   message.toLowerCase().includes('fail') ? 'error' : 'info'
                 }`}>
                   {message}
@@ -335,7 +230,7 @@ const MakePayment = () => {
                 <button
                   type="submit"
                   className="pay-button"
-                  disabled={isProcessing || cartItems.length === 0}
+                  disabled={isProcessing}
                 >
                   {isProcessing ? (
                     <>
@@ -358,16 +253,6 @@ const MakePayment = () => {
               </div>
             </form>
           </>
-        ) : (
-          <div className="empty-cart-message">
-            <p>Your cart is empty</p>
-            <button 
-              className="back-to-shop"
-              onClick={() => navigate('/')}
-            >
-              Continue Shopping
-            </button>
-          </div>
         )}
 
         <div className="payment-security">
