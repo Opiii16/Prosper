@@ -14,7 +14,7 @@ const MakePayment = () => {
   const [message, setMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Enhanced M-Pesa number validation
+  // M-Pesa number validation
   const validateMpesaNumber = (number) => {
     const cleaned = number.replace(/\D/g, '');
     return /^(07\d{8}|254\d{9}|7\d{8})$/.test(cleaned);
@@ -25,7 +25,27 @@ const MakePayment = () => {
     if (cleaned.startsWith('254')) return cleaned;
     if (cleaned.startsWith('7') && cleaned.length === 9) return `254${cleaned}`;
     if (cleaned.startsWith('07')) return `254${cleaned.substring(1)}`;
-    return `254${cleaned}`; // fallback
+    return `254${cleaned}`;
+  };
+
+  // Generate Daraja API access token
+  const generateAccessToken = async () => {
+    try {
+      const auth = {
+        username: process.env.REACT_APP_MPESA_CONSUMER_KEY,
+        password: process.env.REACT_APP_MPESA_CONSUMER_SECRET
+      };
+      
+      const response = await axios.get(
+        process.env.REACT_APP_MPESA_AUTH_URL, 
+        { auth }
+      );
+      
+      return response.data.access_token;
+    } catch (error) {
+      console.error('Token generation error:', error);
+      throw new Error('Failed to authenticate with M-Pesa API');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -37,31 +57,14 @@ const MakePayment = () => {
     }
 
     setIsProcessing(true);
-    setMessage('Initiating payment...');
+    setMessage('Initiating M-Pesa payment...');
 
     try {
       const formattedPhone = formatPhoneNumber(phone);
 
-      const paymentData = {
-        phone: formattedPhone,
-        amount: totalAmount,
-        account_reference: "PROSPER_CLOTHING",
-        transaction_desc: `Payment for ${itemCount} item(s)`,
-        items: cartItems.map(item => ({
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity || 1,
-          size: item.selectedSize,
-          image: item.image
-        }))
-      };
-
-      // Determine if we should use mock payment
-      const shouldUseMock = !process.env.REACT_APP_MPESA_API_URL || 
-                          process.env.NODE_ENV === 'development';
-
-      if (shouldUseMock) {
-        console.log('Using mock payment flow');
+      // DEVELOPMENT: Mock payment flow
+      if (process.env.NODE_ENV === 'development' && !process.env.REACT_APP_MPESA_API_URL) {
+        console.log('[DEV] Mock payment initiated');
         await new Promise(resolve => setTimeout(resolve, 1500));
         
         const mockOrder = {
@@ -74,7 +77,6 @@ const MakePayment = () => {
           date: new Date().toISOString()
         };
 
-        // Save order to localStorage
         const existingOrders = JSON.parse(localStorage.getItem('prosperOrders')) || [];
         localStorage.setItem('prosperOrders', JSON.stringify([...existingOrders, mockOrder]));
         localStorage.removeItem('prosperCart');
@@ -86,21 +88,48 @@ const MakePayment = () => {
         return;
       }
 
-      // PRODUCTION: Real API call
+      // PRODUCTION: Daraja API integration
+      const accessToken = await generateAccessToken();
+      
+      // Create timestamp (YYYYMMDDHHmmss)
+      const timestamp = new Date().toISOString()
+        .replace(/[-:T.]/g, '')
+        .slice(0, 14);
+
+      // Create password (Base64 encoded shortcode + passkey + timestamp)
+      const password = Buffer.from(
+        `${process.env.REACT_APP_MPESA_BUSINESS_SHORTCODE}${process.env.REACT_APP_MPESA_PASSKEY}${timestamp}`
+      ).toString('base64');
+
+      // STK Push payload
+      const paymentData = {
+        BusinessShortCode: process.env.REACT_APP_MPESA_BUSINESS_SHORTCODE,
+        Password: password,
+        Timestamp: timestamp,
+        TransactionType: "CustomerPayBillOnline",
+        Amount: Math.round(totalAmount), // Must be integer
+        PartyA: formattedPhone,
+        PartyB: process.env.REACT_APP_MPESA_BUSINESS_SHORTCODE,
+        PhoneNumber: formattedPhone,
+        CallBackURL: process.env.REACT_APP_MPESA_CALLBACK_URL,
+        AccountReference: "PROSPER_CLOTHING",
+        TransactionDesc: `Payment for ${itemCount} item(s)`
+      };
+
       const response = await axios.post(
         process.env.REACT_APP_MPESA_API_URL,
         paymentData,
         {
           headers: {
-            'Authorization': `Bearer ${process.env.REACT_APP_MPESA_API_KEY}`,
+            'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json'
           },
-          timeout: 10000
+          timeout: 15000
         }
       );
 
-      if (response.data.success) {
-        setMessage('Payment request sent to your phone. Please complete the payment on your M-Pesa menu');
+      if (response.data.ResponseCode === "0") {
+        setMessage('Payment request sent! Please check your phone to complete payment.');
 
         const order = {
           orderId: `PROSPER-${Date.now()}`,
@@ -108,11 +137,11 @@ const MakePayment = () => {
           totalAmount,
           phone: formattedPhone,
           status: 'pending',
-          transactionCode: response.data.transactionCode || 'N/A',
+          checkoutRequestID: response.data.CheckoutRequestID,
+          merchantRequestID: response.data.MerchantRequestID,
           date: new Date().toISOString()
         };
 
-        // Save order to localStorage
         const existingOrders = JSON.parse(localStorage.getItem('prosperOrders')) || [];
         localStorage.setItem('prosperOrders', JSON.stringify([...existingOrders, order]));
         localStorage.removeItem('prosperCart');
@@ -125,24 +154,29 @@ const MakePayment = () => {
             } 
           });
         }, 5000);
+
       } else {
-        setMessage(response.data.message || 'Payment initiation failed. Please try again.');
+        setMessage(response.data.ResponseDescription || 'Payment initiation failed');
       }
+
     } catch (error) {
       console.error('Payment error:', error);
       
       let errorMessage = 'Payment processing failed';
-      if (error.message && error.message.includes('API endpoint')) {
-        errorMessage = 'Payment system is not properly configured. Using mock payment instead.';
+      if (error.message.includes('API endpoint')) {
+        errorMessage = 'Payment system is not configured. Using mock payment instead.';
         
-        // Automatically fall back to mock payment
-        await handleSubmit(e); // Recursively call with mock
+        // Fall back to mock payment
+        await handleSubmit(e);
         return;
-      } else if (error.code === 'ERR_NETWORK') {
-        errorMessage = 'Network error - please check your internet connection';
       } else if (error.response) {
-        errorMessage = error.response.data?.message || 
-                      `Payment error (${error.response.status})`;
+        errorMessage = error.response.data.errorMessage || 
+                     error.response.data.ResponseDescription || 
+                     `Server error (${error.response.status})`;
+      } else if (error.request) {
+        errorMessage = 'No response from M-Pesa server';
+      } else if (error.message.includes('authenticate')) {
+        errorMessage = 'Failed to authenticate with M-Pesa API';
       } else if (error.code === 'ECONNABORTED') {
         errorMessage = 'Request timeout - please try again';
       }
@@ -162,7 +196,36 @@ const MakePayment = () => {
   return (
     <div className="payment-container">
       <div className="payment-card">
-        {/* ... (rest of your JSX remains the same) ... */}
+        <div className="payment-header">
+          <h2>Prosper Clothing Payment</h2>
+          <p>Complete your purchase securely via M-Pesa</p>
+        </div>
+
+        <div className="payment-summary">
+          <h4>Order Summary ({itemCount} {itemCount === 1 ? 'item' : 'items'})</h4>
+          <div className="order-items">
+            {cartItems.map((item, index) => (
+              <div key={index} className="order-item">
+                <div className="item-image">
+                  <img src={item.image} alt={item.name} />
+                </div>
+                <div className="item-info">
+                  <span className="item-name">{item.name}</span>
+                  <div className="item-meta">
+                    <span>Size: {item.selectedSize}</span>
+                    <span>{item.quantity || 1} × {item.price.toLocaleString()} KSH</span>
+                  </div>
+                  <span className="item-price">{(item.price * (item.quantity || 1)).toLocaleString()} KSH</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="order-total">
+            <span>Total Amount:</span>
+            <span className="total-amount">{totalAmount.toLocaleString()} KSH</span>
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="payment-form">
           <div className="form-group">
             <label htmlFor="phone">M-Pesa Phone Number</label>
@@ -184,20 +247,52 @@ const MakePayment = () => {
             <div className={`payment-message ${
               isProcessing ? 'processing' : 
               message.toLowerCase().includes('success') ? 'success' : 
-              message.toLowerCase().includes('fail') || 
-              message.toLowerCase().includes('error') ? 'error' : 'info'
+              message.toLowerCase().includes('fail') || message.toLowerCase().includes('error') ? 'error' : 'info'
             }`}>
               {message}
               {message.includes('mock') && (
-                <div className="mock-notice">
-                  (Using mock payment for demonstration)
-                </div>
+                <div className="mock-notice">(Using mock payment for demonstration)</div>
               )}
             </div>
           )}
 
-          {/* ... (rest of your form JSX) ... */}
+          <div className="payment-actions">
+            <button
+              type="submit"
+              className="pay-button"
+              disabled={isProcessing || cartItems.length === 0}
+            >
+              {isProcessing ? (
+                <>
+                  <span className="spinner"></span>
+                  Processing Payment...
+                </>
+              ) : (
+                `Pay ${totalAmount.toLocaleString()} KSH`
+              )}
+            </button>
+
+            <button
+              type="button"
+              className="back-button"
+              onClick={() => navigate('/cart')}
+              disabled={isProcessing}
+            >
+              Back to Cart
+            </button>
+          </div>
         </form>
+
+        <div className="payment-security">
+          <div className="security-info">
+            <span className="security-icon">🔒</span>
+            <span>Your payment is secure and encrypted</span>
+          </div>
+          <div className="support-info">
+            <span className="support-icon">📞</span>
+            <span>Need help? Call +254745876122</span>
+          </div>
+        </div>
       </div>
     </div>
   );
