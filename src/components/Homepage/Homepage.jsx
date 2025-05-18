@@ -20,9 +20,9 @@ const Homepage = () => {
       { id: 6, name: 'Oversized Tee', price: 1800, colors: ['black', 'white'], image: '/assets/images/red jeezy.jfif' }
     ],
     caps: [
-      { id: 7, name: 'Snapback Cap', price: 800, colors: ['black', 'red'], image: '/assets/images/cap-1.png' },
-      { id: 8, name: 'Dad Hat', price: 700, colors: ['khaki', 'navy'], image: '/assets/images/cap-2.png' },
-      { id: 9, name: 'Bucket Hat', price: 900, colors: ['black', 'camo'], image: '/assets/images/cap-3.png' }
+      { id: 7, name: 'Golf open Cap', price: 800, colors: ['black', 'red'], image: '/assets/images/cap-1.png' },
+      { id: 8, name: 'Bucket Hat', price: 700, colors: ['khaki', 'navy'], image: '/assets/images/cap-2.png' },
+      { id: 9, name: 'Baseball cap ', price: 900, colors: ['black', 'camo'], image: '/assets/images/cap-3.png' }
     ],
     croptops: [
       { id: 10, name: 'Basic Crop', price: 600, colors: ['white', 'pink'], image: '/assets/images/hoodie-4.png' },
