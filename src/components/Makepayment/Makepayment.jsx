@@ -1,100 +1,71 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import './Makepayment.css';
+import './MakePayment.css';
 
 const MakePayment = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [cartItems, setCartItems] = useState([]);
-  const [totalAmount, setTotalAmount] = useState(0);
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  const formatPhoneNumber = (number) => {
-    const cleaned = number.replace(/\D/g, '');
-    if (cleaned.startsWith('254')) return cleaned;
-    if (cleaned.startsWith('0') && cleaned.length === 10) return `254${cleaned.substring(1)}`;
-    if (cleaned.length === 9) return `254${cleaned}`;
-    return cleaned;
-  };
-
-  const validateMpesaNumber = (number) => {
-    const cleaned = number.replace(/\D/g, '');
-    return /^(07\d{8}|254\d{9}|7\d{8})$/.test(cleaned);
-  };
-
-  const fetchCart = async (token) => {
-    try {
-      const res = await axios.get('https://prosperv21.pythonanywhere.com/api/cart', {
-        headers: {
-          'x-access-token': token,
-          'Cache-Control': 'no-cache'
-        }
-      });
-      
-      if (!res.data?.items || res.data.items.length === 0) {
-        setMessage('Your cart is empty');
-        navigate('/cart');
-        return [];
-      }
-      
-      const items = res.data.items || [];
-      setCartItems(items);
-      const total = res.data.total || items.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
-      setTotalAmount(total);
-      return items;
-    } catch (error) {
-      console.error('Error fetching cart:', error);
-      setMessage('Failed to load cart. Please try again.');
-      navigate('/cart');
-      return [];
-    }
-  };
-
-  const fetchUser = async (token) => {
-    try {
-      const res = await axios.get('https://prosperv21.pythonanywhere.com/api/profile', {
-        headers: {
-          'x-access-token': token
-        }
-      });
-      setUser(res.data);
-      if (res.data.phone) setPhone(res.data.phone);
-    } catch (error) {
-      console.error('Error fetching user:', error);
-    }
-  };
+  const [cartItems, setCartItems] = useState([]);
+  const [totalAmount, setTotalAmount] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/signin');
-      return;
-    }
-    
-    const initialize = async () => {
-      setIsLoading(true);
+    const fetchCart = async () => {
       try {
-        await fetchUser(token);
-        await fetchCart(token);
-      } catch (error) {
-        console.error('Initialization error:', error);
+        const token = localStorage.getItem('token');
+        if (!token) {
+          navigate('/signin');
+          return;
+        }
+
+        const res = await axios.get('https://prosperv21.pythonanywhere.com/api/cart', {
+          headers: { 'x-access-token': token }
+        });
+
+        if (res.data?.items) {
+          setCartItems(res.data.items);
+          const total = res.data.items.reduce(
+            (sum, item) => sum + (item.price * (item.quantity || 1)), 0
+          );
+          setTotalAmount(total);
+        }
+      } catch (err) {
+        console.error('Failed to fetch cart:', err);
+        setMessage(err.response?.data?.message || 'Failed to load cart items');
       } finally {
         setIsLoading(false);
       }
     };
-    
-    initialize();
+
+    fetchCart();
   }, [navigate]);
+
+  const validateMpesaNumber = (number) => {
+    return /^(07\d{8}|2547\d{8})$/.test(number);
+  };
+
+  const formatPhoneNumber = (number) => {
+    if (number.startsWith('254')) return number;
+    if (number.startsWith('07')) return `254${number.slice(1)}`;
+    return number;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateMpesaNumber(phone)) {
+    
+    // Validate phone number
+    if (!phone || !validateMpesaNumber(phone)) {
       setMessage('Please enter a valid M-Pesa number (0712345678 or 254712345678)');
+      return;
+    }
+
+    // Check cart not empty
+    if (cartItems.length === 0) {
+      setMessage('Your cart is empty. Please add items before payment.');
+      navigate('/cart');
       return;
     }
 
@@ -108,26 +79,18 @@ const MakePayment = () => {
     }
 
     const formattedPhone = formatPhoneNumber(phone);
-
+    
     try {
-      // First verify cart has items
-      const cartRes = await axios.get('https://prosperv21.pythonanywhere.com/api/cart', {
-        headers: { 'x-access-token': token }
-      });
-      
-      if (!cartRes.data?.items || cartRes.data.items.length === 0) {
-        throw new Error('Your cart is empty. Please add items before payment.');
-      }
-
-      // Create order with cart items
+      // 1. Create order
       const orderRes = await axios.post(
         'https://prosperv21.pythonanywhere.com/api/checkout',
         {
           shipping_address: 'Nairobi, Kenya',
           payment_method: 'mpesa',
           cart_items: cartItems.map(item => ({
-            product_id: item.product_id,
-            quantity: item.quantity || 1
+            product_id: item.product_id || item.id,
+            quantity: item.quantity || 1,
+            price: item.price
           }))
         },
         {
@@ -139,12 +102,12 @@ const MakePayment = () => {
       );
 
       if (!orderRes.data?.order_id) {
-        throw new Error('Failed to create order');
+        throw new Error('Failed to create order. Please try again.');
       }
 
       const orderId = orderRes.data.order_id;
 
-      // Initiate M-Pesa payment
+      // 2. Initiate payment
       const payRes = await axios.post(
         'https://prosperv21.pythonanywhere.com/api/mpesa/stkpush',
         {
@@ -161,14 +124,16 @@ const MakePayment = () => {
       );
 
       if (!payRes.data?.success) {
-        throw new Error(payRes.data?.message || 'Payment initiation failed');
+        throw new Error(payRes.data?.message || 'Payment initiation failed. Please try again.');
       }
 
       setMessage('Payment request sent. Please check your phone to complete payment...');
 
-      // Poll for payment status
+      // 3. Poll for status
       let attempts = 0;
-      const maxAttempts = 10;
+      const maxAttempts = 10; // 30 seconds total
+      const pollInterval = 3000; // 3 seconds
+      
       const checkStatus = async () => {
         attempts++;
         try {
@@ -177,21 +142,30 @@ const MakePayment = () => {
             { headers: { 'x-access-token': token } }
           );
           
-          if (statusRes.data?.order?.payment_status === 'Paid') {
+          if (!statusRes.data?.order) {
+            throw new Error('Order not found');
+          }
+          
+          const order = statusRes.data.order;
+          
+          if (order.payment_status === 'Paid') {
             navigate('/payment-success', {
               state: {
-                orderDetails: statusRes.data.order,
+                orderDetails: order,
                 paymentResponse: payRes.data,
                 cartItems
               }
             });
             return;
+          } else if (order.payment_status === 'Failed') {
+            throw new Error('Payment failed. Please try again.');
           }
 
           if (attempts < maxAttempts) {
-            setTimeout(checkStatus, 3000);
+            setTimeout(checkStatus, pollInterval);
           } else {
-            throw new Error('Payment verification timeout. Please check your order history.');
+            setMessage('Payment verification timeout. Please check your order history for status.');
+            setIsProcessing(false);
           }
         } catch (err) {
           console.error('Status check failed:', err);
@@ -201,6 +175,7 @@ const MakePayment = () => {
       };
 
       setTimeout(checkStatus, 5000);
+      
     } catch (err) {
       console.error('Payment error:', err);
       setMessage(err.response?.data?.message || err.message || 'Payment processing failed');
@@ -216,7 +191,16 @@ const MakePayment = () => {
     return (
       <div className="payment-container">
         <div className="payment-card">
-          <div className="loading-spinner">Loading your payment details...</div>
+          <div className="loading-state">
+            <div className="spinner"></div>
+            <p>Loading your cart details...</p>
+            <button 
+              className="back-button" 
+              onClick={() => navigate('/cart')}
+            >
+              Back to Cart
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -225,121 +209,80 @@ const MakePayment = () => {
   return (
     <div className="payment-container">
       <div className="payment-card">
-        <div className="payment-header">
-          <h2>Complete Your Payment</h2>
-          <p>Secure M-Pesa STK Push Payment</p>
-        </div>
-
-        {cartItems.length > 0 ? (
-          <>
-            <div className="payment-summary">
-              <h4>Order Summary ({cartItems.length} items)</h4>
-              <div className="order-items">
-                {cartItems.map((item, index) => (
-                  <div key={index} className="order-item">
-                    <div className="item-image">
-                      <img 
-                        src={item.image_url || 'https://via.placeholder.com/80'} 
-                        alt={item.name}
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = 'https://via.placeholder.com/80';
-                        }}
-                      />
-                    </div>
-                    <div className="item-info">
-                      <span className="item-name">{item.name}</span>
-                      <div className="item-meta">
-                        <span>Qty: {item.quantity || 1}</span>
-                        <span>{item.price.toLocaleString()} KSH each</span>
-                      </div>
-                      <span className="item-price">
-                        {(item.price * (item.quantity || 1)).toLocaleString()} KSH
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="order-total">
-                <span>Total Amount:</span>
-                <span className="total-amount">{totalAmount.toLocaleString()} KSH</span>
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit} className="payment-form">
-              <div className="form-group">
-                <label htmlFor="phone">M-Pesa Phone Number</label>
-                <input
-                  type="tel"
-                  id="phone"
-                  placeholder="07XXXXXXXX or 2547XXXXXXXX"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                  pattern="^(07\d{8}|254\d{9}|7\d{8})$"
-                />
-                <small>We'll send an STK Push to this number</small>
-              </div>
-
-              {message && (
-                <div className={`payment-message ${
-                  isProcessing ? 'processing' :
-                  message.toLowerCase().includes('sent') ? 'success' :
-                  message.toLowerCase().includes('fail') ? 'error' : 'info'
-                }`}>
-                  {message}
+        <h2>Complete Your Payment</h2>
+        
+        <div className="payment-summary">
+          <h3>Order Summary</h3>
+          <div className="cart-items">
+            {cartItems.map((item, index) => (
+              <div key={index} className="cart-item">
+                <div className="item-image">
+                  <img 
+                    src={item.image_url ? 
+                      `https://prosperv21.pythonanywhere.com${item.image_url}` : 
+                      'https://via.placeholder.com/80'
+                    } 
+                    alt={item.name}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'https://via.placeholder.com/80';
+                    }}
+                    style={{ width: '80px', height: '80px', objectFit: 'cover' }}
+                  />
                 </div>
-              )}
-
-              <div className="payment-actions">
-                <button
-                  type="submit"
-                  className="pay-button"
-                  disabled={isProcessing || cartItems.length === 0}
-                >
-                  {isProcessing ? (
-                    <>
-                      <span className="spinner"></span>
-                      Processing...
-                    </>
-                  ) : (
-                    `Pay ${totalAmount.toLocaleString()} KSH`
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  className="back-button"
-                  onClick={() => navigate('/cart')}
-                  disabled={isProcessing}
-                >
-                  Back to Cart
-                </button>
+                <div className="item-details">
+                  <h4>{item.name}</h4>
+                  <p>Ksh {item.price} x {item.quantity || 1}</p>
+                </div>
               </div>
-            </form>
-          </>
-        ) : (
-          <div className="empty-cart-message">
-            <p>Your cart is empty</p>
-            <button 
-              className="back-to-shop"
-              onClick={() => navigate('/')}
-            >
-              Continue Shopping
-            </button>
+            ))}
           </div>
-        )}
-
-        <div className="payment-security">
-          <div className="security-info">
-            <span className="security-icon">🔒</span>
-            <span>Your payment is secure and encrypted</span>
-          </div>
-          <div className="support-info">
-            <span className="support-icon">📞</span>
-            <span>Need help? Call +254 700 000000</span>
+          <div className="total-amount">
+            <h3>Total: Ksh {totalAmount}</h3>
           </div>
         </div>
+
+        <form onSubmit={handleSubmit} className="payment-form">
+          <div className="form-group">
+            <label htmlFor="phone">M-Pesa Phone Number</label>
+            <input
+              type="tel"
+              id="phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="e.g. 0712345678 or 254712345678"
+              required
+            />
+            <small>Enter your M-Pesa registered phone number</small>
+          </div>
+
+          {message && (
+            <div className={`payment-message ${
+              message.includes('failed') ? 'error' : 
+              message.includes('success') ? 'success' : 
+              'processing'
+            }`}>
+              {message}
+            </div>
+          )}
+
+          <button 
+            type="submit" 
+            className="pay-button"
+            disabled={isProcessing || cartItems.length === 0}
+          >
+            {isProcessing ? 'Processing...' : `Pay Ksh ${totalAmount}`}
+          </button>
+
+          <button 
+            type="button" 
+            className="back-button" 
+            onClick={() => navigate('/cart')}
+            disabled={isProcessing}
+          >
+            Back to Cart
+          </button>
+        </form>
       </div>
     </div>
   );
