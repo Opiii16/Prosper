@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import Navbar from '../Navbar/Navbar.jsx';
-import './Product.css';
+import './Products.css';
 
 const Product = () => {
   const { category_slug } = useParams();
